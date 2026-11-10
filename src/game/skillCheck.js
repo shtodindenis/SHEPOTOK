@@ -1,21 +1,22 @@
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 export const DIRECTIONS = [
   { id: 'up', arrow: '↑', label: 'ВВЕРХ' },
   { id: 'right', arrow: '→', label: 'ВПРАВО' },
   { id: 'left', arrow: '←', label: 'ВЛЕВО' },
   { id: 'down', arrow: '↓', label: 'ВНИЗ' },
-  { id: 'up', arrow: '↑', label: 'ВВЕРХ' },
 ]
+export const HIT_COUNT = 5
 export const HIT_START = 0.35
 export const HIT_END = 0.65
 const BEAT_MS = 1800
 
-export function createSkillCheck(onWin, onLose) {
+export function createSkillCheck(onWin, onLose, random = Math.random) {
   const hits = ref(0), progress = ref(0), active = ref(false)
-  const direction = computed(() => DIRECTIONS[hits.value] || DIRECTIONS[0])
+  const direction = ref(DIRECTIONS[0])
+  function pickDirection() { direction.value = DIRECTIONS[Math.floor(random() * DIRECTIONS.length)] }
   let elapsed = 0
-  function start() { hits.value = 0; progress.value = 0; elapsed = 0; active.value = true }
+  function start() { hits.value = 0; progress.value = 0; elapsed = 0; pickDirection(); active.value = true }
   function stop() { active.value = false }
   function fail() { if (!active.value) return; stop(); onLose() }
   function update(deltaMs) {
@@ -28,8 +29,8 @@ export function createSkillCheck(onWin, onLose) {
     if (!active.value) return
     if (id !== direction.value.id || progress.value < HIT_START || progress.value > HIT_END) { fail(); return }
     hits.value++
-    if (hits.value === DIRECTIONS.length) { stop(); onWin(); return }
-    elapsed = 0; progress.value = 0
+    if (hits.value === HIT_COUNT) { stop(); onWin(); return }
+    elapsed = 0; progress.value = 0; pickDirection()
   }
   return { hits, progress, active, direction, start, stop, update, attempt }
 }

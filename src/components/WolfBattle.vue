@@ -1,5 +1,5 @@
 <script setup>
-import { DIRECTIONS, HIT_START, HIT_END } from '../game/skillCheck.js'
+import { HIT_COUNT, HIT_START, HIT_END } from '../game/skillCheck.js'
 defineProps({ ready: Boolean, hits: Number, progress: Number, direction: Object })
 defineEmits(['start', 'attempt'])
 </script>
@@ -20,7 +20,7 @@ defineEmits(['start', 'attempt'])
         <div class="timing-zone" :style="{ left: `${HIT_START * 100}%`, width: `${(HIT_END - HIT_START) * 100}%` }"></div>
         <div class="timing-marker" :style="{ left: `${progress * 100}%` }"></div>
       </div>
-      <div class="hit-indicators"><span v-for="(_, index) in DIRECTIONS" :key="index" :class="{ hit: index < hits }">{{ index < hits ? '■' : '□' }}</span></div>
+      <div class="hit-indicators"><span v-for="(_, index) in HIT_COUNT" :key="index" :class="{ hit: index < hits }">{{ index < hits ? '■' : '□' }}</span></div>
       <div class="battle-directions" aria-label="Кнопки направления">
         <button aria-label="Вверх" @pointerdown.prevent="$emit('attempt', 'up')">↑</button><button aria-label="Влево" @pointerdown.prevent="$emit('attempt', 'left')">←</button><button aria-label="Вниз" @pointerdown.prevent="$emit('attempt', 'down')">↓</button><button aria-label="Вправо" @pointerdown.prevent="$emit('attempt', 'right')">→</button>
       </div>

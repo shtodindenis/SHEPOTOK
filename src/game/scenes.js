@@ -1,4 +1,5 @@
 import { Graphics } from 'pixi.js'
+import { drawCaptain } from './societyLocation.js'
 import { forestRoad, forestTrees, FOREST_PATHS, forestPathsFor, FOREST_SOLIDS, FOREST_MUSHROOMS, FOREST_LOGS, FOREST_PROP_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_SIGN_SOLID } from './forestMap.js'
 import { SHADOWS, MANSION_WALLS, MANSION_FURNITURE } from './mansionLayout.js'
 
@@ -104,7 +105,7 @@ function buildSociety() {
     for (const [x, y, col, row] of [[49,52,1,7],[91,52,3,8],[119,51,2,7],[162,51,4,8],[190,52,4,7],[232,52,2,8],[72,116,3,7],[238,116,1,8]]) sprite(dungeon, x, y, col, row, 1.25)
   }
   sprite(dungeon, 140, 37, 6, 9); sprite(dungeon, 160, 37, 8, 9)
-  character(160, scene.questState === 'chairs' ? 60 : 91)
+  drawCaptain(world, 160, scene.questState === 'chairs' ? 60 : 91)
   if (scene.societyProgress === 3) objectSprite(furniture, 224, 113, 19, 2, 1.3, false).tint = 0xff4444
 }
 

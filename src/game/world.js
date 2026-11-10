@@ -3,6 +3,7 @@ import { VILLAGE_WIDTH, VILLAGE_HEIGHT, VILLAGE, buildVillage, addVillageSunligh
 import { HOME_WIDTH, HOME_HEIGHT, buildHome, addHomeLighting } from './home.js'
 import { HUT_WIDTH, HUT_HEIGHT, HUT_SCALE, buildHut, addHutLighting } from './hut.js'
 import { RIVER_WIDTH, RIVER_HEIGHT, buildRiver } from './river.js'
+import { SOCIETY_WIDTH, SOCIETY_HEIGHT, SETTLEMENT_WIDTH, SETTLEMENT_HEIGHT, buildSettlement, buildSocietyHouse, addSocietyLighting } from './societyLocation.js'
 import { createCollision } from './collision.js'
 import { buildScene } from './scenes.js'
 import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSION_CHAIR } from './mansionLayout.js'
@@ -66,6 +67,8 @@ export async function createWorld(host, onTick) {
   }
   function bounds() {
     const outside = scene.location === 'village' || scene.location === 'forest'
+    if (scene.location === 'society_village') return { minX:10, maxX:SETTLEMENT_WIDTH-10, minY:20, maxY:SETTLEMENT_HEIGHT-14 }
+    if (scene.location === 'society' && scene.questState !== 'chairs') return { minX:25, maxX:SOCIETY_WIDTH-25, minY:40, maxY:SOCIETY_HEIGHT-18 }
     if (scene.location === 'forest') return { minX:10, maxX:scene.trip || scene.wolfDefeated ? FOREST_WIDTH-10 : 895, minY:35, maxY:FOREST_HEIGHT-14 }
     if (scene.location === 'river') return { minX:10, maxX:RIVER_WIDTH-10, minY:20, maxY:255 }
     if (scene.location === 'village') return { minX:10, maxX:VILLAGE_WIDTH-10, minY:40, maxY:VILLAGE_HEIGHT-14 }
@@ -75,19 +78,21 @@ export async function createWorld(host, onTick) {
     return { minX: outside ? 10 : 25, maxX: outside ? mapWidth - 10 : 295, minY: scene.location === 'forest' ? 35 : outside ? 87 : 58, maxY: outside ? mapHeight - 14 : 169 }
   }
   function updateCamera(player) {
-    const scroll = scene.location === 'river' || scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
+    const scroll = scene.location === 'society_village' || (scene.location === 'society' && scene.questState !== 'chairs') || scene.location === 'river' || scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
     const x = scroll ? Math.max(0, Math.min(mapWidth - VIEW_WIDTH, player.x - VIEW_WIDTH / 2)) : 0
     const y = scroll ? Math.max(0, Math.min(mapHeight - VIEW_HEIGHT, player.y - VIEW_HEIGHT / 2)) : 0
     world.position.set(-Math.round(x), -Math.round(y))
   }
   function draw(newScene, player) {
     scene = newScene
-    mapWidth = scene.location === 'river' ? RIVER_WIDTH : scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
-    mapHeight = scene.location === 'river' ? RIVER_HEIGHT : scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
+    mapWidth = scene.location === 'society_village' ? SETTLEMENT_WIDTH : scene.location === 'society' && scene.questState !== 'chairs' ? SOCIETY_WIDTH : scene.location === 'river' ? RIVER_WIDTH : scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
+    mapHeight = scene.location === 'society_village' ? SETTLEMENT_HEIGHT : scene.location === 'society' && scene.questState !== 'chairs' ? SOCIETY_HEIGHT : scene.location === 'river' ? RIVER_HEIGHT : scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
     collision = createCollision(mapWidth, mapHeight)
     runningTrees = []
     for (const child of world.removeChildren()) child.destroy({ children: true })
-    if (scene.location === 'river') buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene,riverBoat,fishingRod})
+    if (scene.location === 'society_village') buildSettlement({world,sprite,sheet,collision,depthGroup})
+    else if (scene.location === 'society' && scene.questState !== 'chairs') buildSocietyHouse({world,sprite,interior,furniture,dungeon,collision,depthGroup,scene})
+    else if (scene.location === 'river') buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene,riverBoat,fishingRod})
     else if (scene.location === 'village') buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene})
     else if (scene.location === 'hut') {
       const room = new Container(); room.scale.set(HUT_SCALE); room.sortableChildren = true; world.addChild(room)
@@ -119,6 +124,8 @@ export async function createWorld(host, onTick) {
     }
     dynamicLayer = world; dynamicItems = new Map()
     if (scene.location === 'home') addHomeLighting(world, actor)
+    if (scene.location === 'society' && scene.questState !== 'chairs') addSocietyLighting(world)
+    if (scene.location === 'society_village') { const sun = new Graphics().rect(0,0,SETTLEMENT_WIDTH,SETTLEMENT_HEIGHT).fill({color:0xffe3ad,alpha:.07}); sun.zIndex=100000; world.addChild(sun) }
     if (scene.location === 'hut') { const lighting = new Container(); lighting.scale.set(HUT_SCALE); lighting.sortableChildren = true; lighting.zIndex = 100000; world.addChild(lighting); addHutLighting(lighting) }
     if (scene.location === 'village') addVillageSunlight(world)
     updateCamera(player)

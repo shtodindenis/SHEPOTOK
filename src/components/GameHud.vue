@@ -13,7 +13,7 @@ defineEmits(['menu', 'save-game', 'load-game', 'interact', 'next-dialog', 'dig',
     </button>
     <span v-if="inventory?.[selectedInventorySlot]" class="inventory-drop-hint">{{ fishing ? 'R — ВЫТЯНУТЬ' : 'R — БРОСИТЬ' }} · Q — {{ inventory[selectedInventorySlot] === 'photo' ? 'ПОСМОТРЕТЬ' : inventory[selectedInventorySlot] === 'rod' ? 'ЗАБРОСИТЬ' : 'ИСПОЛЬЗОВАТЬ' }}</span>
   </div>
-  <div v-if="location === 'society' && screen === 'game'" class="location-label">ОБЩЕСТВО ВУАЙЕРИСТОВ</div>
+  <div v-if="(location === 'society' || location === 'society_village') && screen === 'game'" class="location-label">ОБЩЕСТВО ВУАЙЕРИСТОВ</div>
   <div v-if="screen === 'game' && (questHint || bikeHint) && !dialog" class="quest-hint">{{ questHint }}<div v-if="bikeHint" class="side-quest">{{ bikeHint }}</div></div>
   <div v-if="fishing" class="fishing-panel" role="status">
     <div>{{ fishing.kind === 'well' ? 'РЫБАЛКА В КОЛОДЦЕ' : fishing.phase === 'waiting' ? 'ЖДИ ПОКЛЁВКИ' : fishing.phase === 'bite' ? 'КЛЮЁТ! ПОДСЕКАЙ: ПРОБЕЛ / ЛКМ' : 'ДЕРЖИ НАТЯЖЕНИЕ В ЦЕНТРЕ' }}</div>

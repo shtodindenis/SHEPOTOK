@@ -12,6 +12,7 @@ import { QUIZ_TIME_MS, quizQuestions, quizResult, validQuiz } from './wellQuiz.j
 import { VILLAGE, OTHER_DOORS } from './village.js'
 import { createWorld } from './world.js'
 import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_MUSHROOMS, RIVER_PATH_ENTRY, FOREST_SIGN } from './forestMap.js'
+import { SOCIETY_ENTRY, CAPTAIN, SETTLEMENT_FOREST, SETTLEMENT_HOUSE } from './societyLocation.js'
 import { QUEST_STATES, SEATS, advanceChairs, createChairs, createTail, inShadow, sitDown, updateTail } from './societyQuest.js'
 import { MANSION_ENTRY, MANSION_CHAIR, createMansionPatrol, advanceMansionPatrol } from './mansionLayout.js'
 
@@ -60,7 +61,7 @@ export function useGame() {
   const questHint = computed(() => getQuestHint({ questState: questState.value, questStatus: questStatus.value, location: location.value, witchAngry: witchAngry.value, stashState: stashState.value, stage: stage.value, shovel: shovel.value, shovelUsed: shovelUsed.value, note: note.value }))
 
   const battle = createSkillCheck(
-    () => { screen.value = 'game'; audio.beep(520, .12); speak('wolfVictory', () => { trip.value = false; wolfDefeated.value = true; transition('society', 160, 151) }, true) },
+    () => { screen.value = 'game'; audio.beep(520, .12); speak('wolfVictory', () => { trip.value = false; wolfDefeated.value = true; transition('society_village', SETTLEMENT_FOREST.x + 20, SETTLEMENT_FOREST.y) }, true) },
     () => { unlockAchievement('wolf_loss'); screen.value = 'game'; audio.beep(110, .2); speak('wolfFail', () => finishEnding('wolf'), true) },
   )
 
@@ -75,7 +76,7 @@ export function useGame() {
     if (location.value === 'forest') photo.value = renderer.forestPhoto()
     near.value = ''
   }
-  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, mushroomUsed: mushroomUsed.value, wolfDefeated: wolfDefeated.value, inventorySlots: inventory.value, rodTaken: rodTaken.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 5, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, droppedItems: droppedItems.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
+  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, mushroomUsed: mushroomUsed.value, wolfDefeated: wolfDefeated.value, inventorySlots: inventory.value, rodTaken: rodTaken.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 5, homeVersion: 1, hutVersion: 2, villageVersion: 1, societyVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, droppedItems: droppedItems.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
   function save() { writeSave(saveData()) }
   function unlockEnding(id) {
     if (!unlocked.value.includes(id)) unlocked.value = [...unlocked.value, id]
@@ -150,8 +151,13 @@ export function useGame() {
       }
       if (saved.location === 'hut' && saved.hutVersion !== 2) { player.x = 75; player.y = 169 }
       if (saved.location === 'home' && saved.homeVersion !== 1) { player.x = 256; player.y = 270 }
-      droppedRag.value = saved.droppedRag && ['home','village','hut','forest','river','society','mansion'].includes(saved.droppedRag.location) && Number.isFinite(saved.droppedRag.x) && Number.isFinite(saved.droppedRag.y) ? { ...saved.droppedRag } : null
-      droppedItems.value = Object.fromEntries(Object.entries(saved.droppedItems || {}).filter(([kind,p]) => ['shovel','photo','treasure','rod'].includes(kind) && p && ['home','village','hut','forest','river','society','mansion'].includes(p.location) && Number.isFinite(p.x) && Number.isFinite(p.y)))
+      droppedRag.value = saved.droppedRag && ['home','village','hut','forest','river','society','society_village','mansion'].includes(saved.droppedRag.location) && Number.isFinite(saved.droppedRag.x) && Number.isFinite(saved.droppedRag.y) ? { ...saved.droppedRag } : null
+      droppedItems.value = Object.fromEntries(Object.entries(saved.droppedItems || {}).filter(([kind,p]) => ['shovel','photo','treasure','rod'].includes(kind) && p && ['home','village','hut','forest','river','society','society_village','mansion'].includes(p.location) && Number.isFinite(p.x) && Number.isFinite(p.y)))
+      // Objects dropped in the old single-room society move to the new entrance.
+      if (saved.societyVersion !== 1) {
+        if (droppedRag.value?.location === 'society') droppedRag.value = { location:'society', x:SOCIETY_ENTRY.x+16, y:SOCIETY_ENTRY.y }
+        for (const point of Object.values(droppedItems.value)) if (point.location === 'society') { point.x = SOCIETY_ENTRY.x+16; point.y = SOCIETY_ENTRY.y }
+      }
       ragTaken.value = !!saved.ragTaken && !droppedRag.value; bikeQuest.value = !!saved.bikeQuest; bikeClean.value = !!saved.bikeClean
       selectedInventorySlot.value = Number.isInteger(saved.selectedInventorySlot) && saved.selectedInventorySlot >= 0 && saved.selectedInventorySlot < 6 ? saved.selectedInventorySlot : -1
       rodTaken.value = !!saved.rodTaken; shovel.value = !!saved.shovel; shovelUsed.value = saved.shovelUsed; note.value = !!saved.note; trip.value = !!saved.trip; wolfDefeated.value = saved.wolfDefeated; mushroomUsed.value = typeof saved.mushroomUsed === 'boolean' ? saved.mushroomUsed : trip.value || wolfDefeated.value
@@ -170,7 +176,8 @@ export function useGame() {
       questState.value = QUEST_STATES.includes(saved.questState) ? saved.questState : ['none','report1','report2','done'][societyProgress.value]
       if (questState.value === 'tail') { questState.value = 'tail_ready'; location.value = 'forest'; player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y }
       if (questState.value === 'heist' || location.value === 'mansion') { questState.value = 'heist_ready'; location.value = 'village'; player.x = VILLAGE.mansion.x; player.y = VILLAGE.mansion.y }
-      if (questState.value === 'chairs') { questState.value = 'report2'; location.value = 'society'; player.x = 160; player.y = 151 }
+      if (questState.value === 'chairs') { questState.value = 'report2'; location.value = 'society'; player.x = CAPTAIN.x; player.y = CAPTAIN.y + 22 }
+      else if (saved.location === 'society' && saved.societyVersion !== 1) { player.x = SOCIETY_ENTRY.x; player.y = SOCIETY_ENTRY.y }
       if (saved.location === 'forest' && saved.forestVersion !== 5) {
         player.x = questState.value === 'tail_ready' ? FOREST_EAST.x-30 : 40
         player.y = 224
@@ -213,17 +220,17 @@ export function useGame() {
     fishing.value = null
     if (questState.value === 'tail') { questState.value = 'tail_ready'; location.value = 'forest'; player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y; tail = null }
     if (questState.value === 'heist') { questState.value = 'heist_ready'; location.value = 'village'; player.x = VILLAGE.mansion.x; player.y = VILLAGE.mansion.y; carriedChair = false }
-    if (questState.value === 'chairs') { questState.value = 'report2'; location.value = 'society'; player.x = 160; player.y = 151; chairGame = null }
+    if (questState.value === 'chairs') { questState.value = 'report2'; location.value = 'society'; player.x = CAPTAIN.x; player.y = CAPTAIN.y + 22; chairGame = null }
     save(); keys.clear(); dialog.value = null; choice.value = false; photoOpen.value = false; screen.value = 'title'
   }
   function transition(dest, x, y) {
     const origin = location.value
     fishing.value = null
     location.value = dest; photoOpen.value = false; player.x = x; player.y = y; drawScene(); save(); audio.beep(200, .1)
-    if (origin === 'society' && dest === 'forest' && questState.value === 'tail_ready') startTail()
+    if (origin === 'society_village' && dest === 'forest' && questState.value === 'tail_ready') startTail()
   }
   function encounterWolf() {
-    if (wolfDefeated.value) { transition('society', 160, 151); return }
+    if (wolfDefeated.value) { transition('society_village', SETTLEMENT_FOREST.x + 20, SETTLEMENT_FOREST.y); return }
     if (inventory.value.includes('shovel')) speak('wolfReady', () => { keys.clear(); screen.value = 'battle-ready' })
     else speak('wolf', () => finishEnding('wolf'))
   }
@@ -252,7 +259,7 @@ export function useGame() {
     if (!chairGame) return
     const result = sitDown(chairGame, player)
     if (result === 'won') {
-      questState.value = 'done'; societyProgress.value = 3; chairGame = null; unlockAchievement('throne'); drawScene(); save(); speak('missionThreeDone')
+      questState.value = 'done'; societyProgress.value = 3; chairGame = null; player.x = CAPTAIN.x; player.y = CAPTAIN.y + 22; unlockAchievement('throne'); drawScene(); save(); speak('missionThreeDone')
     } else if (result === 'next') { syncMusic(); save() }
   }
   function selectInventorySlot(index) {
@@ -336,10 +343,14 @@ export function useGame() {
       { x:CAMP.x, y:CAMP.y, label:'ОСМОТРЕТЬ БУТЫЛКУ', action: () => { unlockAchievement('flashback'); speak('flashback') } },
       ...((trip.value || wolfDefeated.value) ? [{ x: FOREST_EAST.x, y: FOREST_EAST.y, label: wolfDefeated.value ? 'ПРОЙТИ В ПОСЕЛЕНИЕ' : 'СТРАННЫЙ ВЫХОД', action: encounterWolf }] : []),
     ]
+    if (location.value === 'society_village') return [
+      { ...SETTLEMENT_FOREST, label:'ВЕРНУТЬСЯ В ЛЕС', action: () => transition('forest', FOREST_EAST.x-30, FOREST_EAST.y) },
+      { ...SETTLEMENT_HOUSE, label:'ВОЙТИ В ДОМ ОБЩЕСТВА', action: () => transition('society', SOCIETY_ENTRY.x, SOCIETY_ENTRY.y) },
+    ]
     if (location.value === 'society') return [
-      { x: 160, y: 169, label: 'ВЕРНУТЬСЯ В ЛЕС', action: () => transition('forest', FOREST_EAST.x-30, FOREST_EAST.y) },
-      { x: 160, y: 102, label: 'ПОГОВОРИТЬ С КАПИТАНОМ КУКОМ', action: captain },
-      ...(societyProgress.value === 3 ? [{ x: 232, y: 138, label: 'ОСМОТРЕТЬ СВОЙ КРАСНЫЙ СТУЛ', action: () => speak('redChair') }] : []),
+      { ...SOCIETY_ENTRY, label:'ВЫЙТИ В ПОСЕЛЕНИЕ', action: () => transition('society_village', SETTLEMENT_HOUSE.x, SETTLEMENT_HOUSE.y+3) },
+      { x: CAPTAIN.x, y: CAPTAIN.y+14, label:'ПОГОВОРИТЬ С КАПИТАНОМ КУКОМ', action: captain },
+      ...(societyProgress.value === 3 ? [{ x: 714, y: 148, label: 'ОСМОТРЕТЬ СВОЙ КРАСНЫЙ СТУЛ', action: () => speak('redChair') }] : []),
     ]
     return [
       { ...VILLAGE.bike, label: !bikeClean.value && bikeQuest.value && ragTaken.value && inventory.value[selectedInventorySlot.value] === 'rag' ? 'ОТМЫТЬ ПИТБАЙК' : 'ОСМОТРЕТЬ ПИТБАЙК', action: inspectBike },
@@ -450,7 +461,7 @@ export function useGame() {
         chairStarts = Array.from({ length:count }, (_, i) => { const a=chairGame.angle+(i+1)*Math.PI*2/(count+1); return { x:160+56*Math.cos(a), y:116+32*Math.sin(a) } })
       }
       if (result === 'failed') {
-        chairGame = null; questState.value = 'report2'; player.x=160; player.y=151; unlockAchievement('chairs_loss'); drawScene(); save(); speak('chairsFailed'); return
+        chairGame = null; questState.value = 'report2'; player.x=CAPTAIN.x; player.y=CAPTAIN.y+22; unlockAchievement('chairs_loss'); drawScene(); save(); speak('chairsFailed'); return
       }
       questStatus.value = chairGame.phase === 'music' ? `КРУГ ${chairGame.round} / 3: ХОДИ ВОКРУГ СТУЛЬЕВ. ЖДИ ОСТАНОВКИ МУЗЫКИ` : `КРУГ ${chairGame.round} / 3: СКОРЕЕ К СТУЛУ И НАЖМИ E!`
       for (const [i, seat] of SEATS.slice(0,count).entries()) actors.push({ id:`seat${i}`, kind:'chair', ...seat })
