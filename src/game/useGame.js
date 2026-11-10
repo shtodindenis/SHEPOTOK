@@ -56,7 +56,7 @@ export function useGame() {
 
   function snapshot() { return { location: location.value, stage: stage.value, note: note.value, shovel: shovel.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, carriedChair, ragTaken: ragTaken.value || !!droppedRag.value, bikeClean: bikeClean.value } }
   function drawScene() { if (renderer) { renderer.draw(snapshot(), player); if (location.value === 'forest') photo.value = renderer.forestPhoto(); near.value = '' } }
-  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, forestVersion: 3, homeVersion: 1, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
+  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, forestVersion: 3, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
   function save() { writeSave(saveData()) }
   function unlockEnding(id) {
     if (!unlocked.value.includes(id)) unlocked.value = [...unlocked.value, id]
@@ -113,6 +113,7 @@ export function useGame() {
         const target = saved.quiz ? VILLAGE.neighbor : saved.player.x >= 570 ? VILLAGE.forest : saved.player.x >= 400 ? VILLAGE.mansion : saved.player.x >= 240 ? VILLAGE.hut : saved.player.x >= 140 ? VILLAGE.well : VILLAGE.home
         player.x = target.x; player.y = target.y + (target === VILLAGE.well ? 20 : 0)
       }
+      if (saved.location === 'hut' && saved.hutVersion !== 2) { player.x = 75; player.y = 169 }
       if (saved.location === 'home' && saved.homeVersion !== 1) { player.x = 256; player.y = 270 }
       droppedRag.value = saved.droppedRag && ['home','village','hut','forest','society','mansion'].includes(saved.droppedRag.location) && Number.isFinite(saved.droppedRag.x) && Number.isFinite(saved.droppedRag.y) ? { ...saved.droppedRag } : null
       ragTaken.value = !!saved.ragTaken && !droppedRag.value; bikeQuest.value = !!saved.bikeQuest; bikeClean.value = !!saved.bikeClean
@@ -256,8 +257,8 @@ export function useGame() {
 
     ]
     if (location.value === 'hut') return [
-      { x: 160, y: 166, label: 'ВЫЙТИ ИЗ ДОМА', action: () => transition('village', VILLAGE.hut.x, VILLAGE.hut.y) },
-      { x: 160, y: 110, label: 'ПОГОВОРИТЬ С ГАДАЛКОЙ', action: () => {
+      { x: 75, y: 179, label: 'ВЫЙТИ ИЗ ДОМА', action: () => transition('village', VILLAGE.hut.x, VILLAGE.hut.y) },
+      { x: 238, y: 78, label: 'ПОГОВОРИТЬ С ГАДАЛКОЙ', action: () => {
         if (witchAngry.value) speak('witchAngry')
         else if (stashState.value === 'witch' && stage.value < 2) speak(stage.value === 0 ? 'witchRecoveredEarly' : 'witchRecovered', () => { stashState.value = 'returned'; stage.value = 3 })
         else if (stage.value === 0) speak('witch', () => { stage.value = 1; shovelPermission.value = true })
@@ -265,14 +266,14 @@ export function useGame() {
         else if (stage.value === 2) speak('reward', () => { stage.value = 3; stashState.value = 'returned' })
         else speak('reward')
       } },
-      ...(!shovel.value ? [{ x: 42, y: 120, label: 'ВЗЯТЬ ЛОПАТУ', action: () => {
+      ...(!shovel.value ? [{ x: 27, y: 69, label: 'ВЗЯТЬ ЛОПАТУ', action: () => {
         if (!shovelPermission.value) {
           shovel.value = true; shovelUsed.value = false; witchAngry.value = true
           if (stage.value === 0 && note.value) stage.value = 1
           unlockAchievement('thief'); drawScene(); save(); speak(stage.value === 3 ? 'shovelStolenWithSpell' : 'shovelStolen')
         } else speak('shovel', () => { shovel.value = true; shovelUsed.value = false; drawScene() })
       } }] : []),
-      ...(!note.value ? [{ x: 252, y: 99, label: 'ВЗЯТЬ ФОТОГРАФИЮ', action: () => speak('note', () => { note.value = true; if (witchAngry.value && stage.value === 0) stage.value = 1; drawScene() }) }] : []),
+      ...(!note.value ? [{ x: 281, y: 69, label: 'ВЗЯТЬ ФОТОГРАФИЮ', action: () => speak('note', () => { note.value = true; if (witchAngry.value && stage.value === 0) stage.value = 1; drawScene() }) }] : []),
     ]
     if (location.value === 'forest') return [
       { x: 18, y: 224, label: 'ВЫЙТИ ИЗ ЛЕСА', action: () => trip.value ? speak('freedom', () => finishEnding('freedom')) : transition('village', VILLAGE.forest.x-10, VILLAGE.forest.y) },
@@ -290,7 +291,7 @@ export function useGame() {
     return [
       { ...VILLAGE.bike, label: !bikeClean.value && bikeQuest.value && ragTaken.value && selectedInventorySlot.value === 0 ? 'ОТМЫТЬ ПИТБАЙК' : 'ОСМОТРЕТЬ ПИТБАЙК', action: inspectBike },
       { ...VILLAGE.home, label: 'ВОЙТИ ДОМОЙ', action: () => transition('home', 256, 274) },
-      { ...VILLAGE.hut, label: 'ВОЙТИ В ДОМ', action: () => transition('hut', 160, 151) },
+      { ...VILLAGE.hut, label: 'ВОЙТИ В ДОМ', action: () => transition('hut', 75, 169) },
       { ...VILLAGE.sign, label: 'ПРОЧИТАТЬ ТАБЛИЧКУ', action: () => speak('sign') },
       { ...VILLAGE.neighbor, label: 'ПОГОВОРИТЬ С КУКОЛДОМ', action: () => questState.value !== 'done' ? speak('silentNeighbor') : wellQuizPassed.value ? speak('quizPassed') : speak('quizIntro', startQuiz) },
       { x: VILLAGE.well.x, y: VILLAGE.well.y + 16, label: 'ОСМОТРЕТЬ КОЛОДЕЦ', action: () => speak('well', () => { choice.value = true; choiceIndex.value = 0; keys.clear() }) },

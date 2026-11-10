@@ -1,6 +1,7 @@
 import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js'
 import { VILLAGE_WIDTH, VILLAGE_HEIGHT, VILLAGE, buildVillage, addVillageSunlight } from './village.js'
 import { HOME_WIDTH, HOME_HEIGHT, buildHome, addHomeLighting } from './home.js'
+import { HUT_WIDTH, HUT_HEIGHT, HUT_SCALE, buildHut, addHutLighting } from './hut.js'
 import { createCollision } from './collision.js'
 import { buildScene } from './scenes.js'
 import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSION_CHAIR } from './mansionLayout.js'
@@ -12,17 +13,17 @@ export async function createWorld(host, onTick) {
   const app = new Application()
   await app.init({ width: VIEW_WIDTH, height: VIEW_HEIGHT, background: '#202520', antialias: false, preference: 'webgl', resolution: 1 })
   host.appendChild(app.canvas)
-  const [sheet, dungeon, furniture, interior, bike] = await Promise.all([
-    Assets.load('/assets/kenney-tiny-town.png'), Assets.load('/assets/kenney-tiny-dungeon.png'), Assets.load('/assets/kenney-roguelike.png'), Assets.load('/assets/kenney-roguelike-indoor.png'), Assets.load('/assets/pitbike.png'),
+  const [sheet, dungeon, furniture, interior, bike, caves] = await Promise.all([
+    Assets.load('/assets/kenney-tiny-town.png'), Assets.load('/assets/kenney-tiny-dungeon.png'), Assets.load('/assets/kenney-roguelike.png'), Assets.load('/assets/kenney-roguelike-indoor.png'), Assets.load('/assets/pitbike.png'), Assets.load('/assets/kenney-caves.png'),
   ])
-  for (const texture of [sheet, dungeon, furniture, interior, bike]) texture.source.scaleMode = 'nearest'
+  for (const texture of [sheet, dungeon, furniture, interior, bike, caves]) texture.source.scaleMode = 'nearest'
   const world = new Container(), textures = new WeakMap()
   world.sortableChildren = true
   app.stage.addChild(world)
   let scene = { location: 'home' }, mapWidth = VIEW_WIDTH, mapHeight = VIEW_HEIGHT, collision, actor, dynamicLayer, dynamicItems = new Map(), forestPhoto = ''
 
   function tileTexture(source, col, row) {
-    const spacing = source === furniture || source === interior ? 17 : 16
+    const spacing = source === furniture || source === interior || source === caves ? 17 : 16
     let cached = textures.get(source)
     if (!cached) { cached = new Map(); textures.set(source, cached) }
     const key = row * 1000 + col
@@ -30,7 +31,7 @@ export async function createWorld(host, onTick) {
     return cached.get(key)
   }
   function sprite(source, x, y, col, row, scale = 1, solid = true) {
-    const spacing = source === furniture || source === interior ? 17 : 16
+    const spacing = source === furniture || source === interior || source === caves ? 17 : 16
     const item = new Sprite(tileTexture(source, col, row)); item.x = x; item.y = y; item.scale.set(scale); world.addChild(item)
     if (solid) { collision.add(source, x, y, col, row, scale, spacing); item.zIndex = y + 16 * scale }
     return item
@@ -65,23 +66,31 @@ export async function createWorld(host, onTick) {
   function bounds() {
     const outside = scene.location === 'village' || scene.location === 'forest'
     if (scene.location === 'village') return { minX:10, maxX:VILLAGE_WIDTH-10, minY:40, maxY:VILLAGE_HEIGHT-14 }
+    if (scene.location === 'hut') return { minX:16, maxX:304, minY:27, maxY:183 }
     if (scene.location === 'home') return { minX:25, maxX:487, minY:42, maxY:294 }
     if (scene.location === 'mansion') return { minX:25, maxX:mapWidth-25, minY:35, maxY:mapHeight-25 }
     return { minX: outside ? 10 : 25, maxX: outside ? mapWidth - 10 : 295, minY: scene.location === 'forest' ? 35 : outside ? 87 : 58, maxY: outside ? mapHeight - 14 : 169 }
   }
   function updateCamera(player) {
-    const scroll = scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home'
+    const scroll = scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
     const x = scroll ? Math.max(0, Math.min(mapWidth - VIEW_WIDTH, player.x - VIEW_WIDTH / 2)) : 0
     const y = scroll ? Math.max(0, Math.min(mapHeight - VIEW_HEIGHT, player.y - VIEW_HEIGHT / 2)) : 0
     world.position.set(-Math.round(x), -Math.round(y))
   }
   function draw(newScene, player) {
     scene = newScene
-    mapWidth = scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
-    mapHeight = scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
+    mapWidth = scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
+    mapHeight = scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
     collision = createCollision(mapWidth, mapHeight)
     for (const child of world.removeChildren()) child.destroy({ children: true })
     if (scene.location === 'village') buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene})
+    else if (scene.location === 'hut') {
+      const room = new Container(); room.scale.set(HUT_SCALE); room.sortableChildren = true; world.addChild(room)
+      const hutSprite = (...args) => { const item = sprite(...args); room.addChild(item); return item }
+      const hutCollision = { addRect: ({x,y,w,h}) => collision.addRect({x:x*HUT_SCALE,y:y*HUT_SCALE,w:w*HUT_SCALE,h:h*HUT_SCALE}) }
+      const hutCharacter = (x,y,witch) => character(x*HUT_SCALE,y*HUT_SCALE,witch)
+      buildHut({ world:room, sprite:hutSprite, interior, furniture, dungeon, sheet, caves, collision:hutCollision, scene, character:hutCharacter })
+    }
     else if (scene.location === 'home') buildHome({ world, sprite, interior, furniture, dungeon, collision, scene, depthGroup })
     else buildScene({ sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight })
     if (scene.location === 'mansion') {
@@ -96,6 +105,7 @@ export async function createWorld(host, onTick) {
     actor = character(player.x, player.y)
     dynamicLayer = world; dynamicItems = new Map()
     if (scene.location === 'home') addHomeLighting(world, actor)
+    if (scene.location === 'hut') { const lighting = new Container(); lighting.scale.set(HUT_SCALE); lighting.sortableChildren = true; lighting.zIndex = 100000; world.addChild(lighting); addHutLighting(lighting) }
     if (scene.location === 'village') addVillageSunlight(world)
     updateCamera(player)
   }
