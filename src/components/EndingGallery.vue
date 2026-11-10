@@ -5,7 +5,7 @@ defineEmits(['back'])
 
 <template>
   <div class="gallery">
-    <div class="gallery-heading"><h2>КОНЦОВКИ</h2><span>{{ unlocked.length }} / 5</span></div>
+    <div class="gallery-heading"><h2>КОНЦОВКИ</h2><span>{{ unlocked.length }} / {{ endings.length }}</span></div>
     <div class="gallery-list" role="list">
       <div v-for="(item, index) in endings" :key="item.id" class="gallery-item" role="listitem">
         <span class="gallery-number">{{ String(index + 1).padStart(2, '0') }}</span>

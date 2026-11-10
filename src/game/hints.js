@@ -7,7 +7,7 @@ export function getBikeHint({ bikeQuest, bikeClean, ragTaken, droppedRag }) {
 }
 
 export function getQuestHint({ questState, questStatus, location, witchAngry, stashState, stage, shovel, shovelUsed, note }) {
-  if (['tail', 'heist', 'chairs'].includes(questState)) return questStatus
+  if (['tail', 'escort_forest', 'escort_village', 'escort_hut', 'heist', 'chairs'].includes(questState)) return questStatus
   if (questState === 'tail_ready') return location === 'forest' ? 'ПОДОЙДИ К ВОСТОЧНОМУ ВХОДУ В ЛЕС И НАЖМИ E, ЧТОБЫ НАЧАТЬ СЛЕЖКУ' : 'ПОРУЧЕНИЕ 1: ВЫЙДИ ИЗ ОБЩЕСТВА В ЛЕС'
   if (questState === 'report1') return 'ПОРУЧЕНИЕ ВЫПОЛНЕНО: ВЕРНИСЬ К КАПИТАНУ КУКУ В ОБЩЕСТВО'
   if (questState === 'heist_ready') return 'ПОРУЧЕНИЕ 2: НАЙДИ ОСОБНЯК НА ВОСТОКЕ ДЕРЕВНИ И ВОЙДИ В ДВЕРЬ'

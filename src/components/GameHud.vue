@@ -1,20 +1,20 @@
 <script setup>
-defineProps({ screen: String, location: String, coords: Object, note: Boolean, photo: String, photoOpen: Boolean, shovel: Boolean, shovelUsed: Boolean, near: String, dialog: Object, choice: Boolean, choiceIndex: Number, questHint: String, inventory: Array, selectedInventorySlot: Number, bikeHint: String, fishing: Object })
+defineProps({ urgent: Boolean, screen: String, location: String, coords: Object, note: Boolean, photo: String, photoOpen: Boolean, shovel: Boolean, shovelUsed: Boolean, near: String, dialog: Object, choice: Boolean, choiceIndex: Number, questHint: String, inventory: Array, selectedInventorySlot: Number, bikeHint: String, fishing: Object })
 const itemNames = { rag:'тряпка', shovel:'лопата', photo:'фотография', treasure:'клад', rod:'удочка' }
 defineEmits(['menu', 'save-game', 'load-game', 'interact', 'next-dialog', 'dig', 'press', 'release', 'choose', 'toggle-photo', 'select-inventory', 'use-item', 'fishing-hold', 'retrieve-rod'])
 </script>
 
 <template>
-  <button v-if="screen === 'game'" class="menu-button" @click="$emit('menu')">МЕНЮ</button>
-  <div v-if="screen === 'game'" class="save-buttons"><button @click="$emit('save-game')">СОХРАНИТЬ</button><button @click="$emit('load-game')">ЗАГРУЗИТЬ</button></div>
-  <div v-if="screen === 'game'" class="inventory" aria-label="Инвентарь">
+  <button v-if="screen === 'game' && !urgent" class="menu-button" @click="$emit('menu')">МЕНЮ</button>
+  <div v-if="screen === 'game' && !urgent" class="save-buttons"><button @click="$emit('save-game')">СОХРАНИТЬ</button><button @click="$emit('load-game')">ЗАГРУЗИТЬ</button></div>
+  <div v-if="screen === 'game' && !urgent" class="inventory" aria-label="Инвентарь">
     <button v-for="(item, index) in inventory" :key="index" class="inventory-slot" :class="{ selected: selectedInventorySlot === index }" :aria-label="`Ячейка ${index + 1}: ${itemNames[item] || 'пусто'}`" :aria-pressed="selectedInventorySlot === index" @click="$emit('select-inventory', index)">
       <span class="inventory-number">{{ index + 1 }}</span><span v-if="item" :class="`${item}-icon`" aria-hidden="true"></span>
     </button>
     <span v-if="inventory?.[selectedInventorySlot]" class="inventory-drop-hint">{{ fishing ? 'R — ВЫТЯНУТЬ' : 'R — БРОСИТЬ' }} · Q — {{ inventory[selectedInventorySlot] === 'photo' ? 'ПОСМОТРЕТЬ' : inventory[selectedInventorySlot] === 'rod' ? 'ЗАБРОСИТЬ' : 'ИСПОЛЬЗОВАТЬ' }}</span>
   </div>
   <div v-if="(location === 'society' || location === 'society_village') && screen === 'game'" class="location-label">ОБЩЕСТВО ВУАЙЕРИСТОВ</div>
-  <div v-if="screen === 'game' && (questHint || bikeHint) && !dialog" class="quest-hint">{{ questHint }}<div v-if="bikeHint" class="side-quest">{{ bikeHint }}</div></div>
+  <div v-if="screen === 'game' && !urgent && (questHint || bikeHint) && !dialog" class="quest-hint">{{ questHint }}<div v-if="bikeHint" class="side-quest">{{ bikeHint }}</div></div>
   <div v-if="fishing" class="fishing-panel" role="status">
     <div>{{ fishing.kind === 'well' ? 'РЫБАЛКА В КОЛОДЦЕ' : fishing.phase === 'waiting' ? 'ЖДИ ПОКЛЁВКИ' : fishing.phase === 'bite' ? 'КЛЮЁТ! ПОДСЕКАЙ: ПРОБЕЛ / ЛКМ' : 'ДЕРЖИ НАТЯЖЕНИЕ В ЦЕНТРЕ' }}</div>
     <template v-if="fishing.phase === 'reeling'"><div class="fishing-meter"><span class="fishing-zone"></span><i :style="{left: `${fishing.tension * 100}%`}"></i></div><div class="fishing-progress"><span :style="{width: `${fishing.progress * 100}%`}"></span></div></template>

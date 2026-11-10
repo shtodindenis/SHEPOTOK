@@ -1,4 +1,4 @@
-export const QUEST_STATES = ['none','tail_ready','tail','report1','heist_ready','heist','report2','chairs','done']
+export const QUEST_STATES = ['none','tail_ready','tail','escort_forest','escort_village','escort_hut','report1','heist_ready','heist','report2','chairs','done']
 import { stashRoute } from './forestMap.js'
 const RETURN_ROUTE = [{x:512,y:352},{x:512,y:208},{x:336,y:208},{x:336,y:320},{x:160,y:320},{x:160,y:224},{x:35,y:224}]
 export { inMansionShadow as inShadow } from './mansionLayout.js'
@@ -33,4 +33,20 @@ export function sitDown(game, player) {
   if (game.phase !== 'stop' || !SEATS.slice(0,4-game.round).some(s => Math.hypot(s.x-player.x,s.y-player.y)<25)) return false
   if (game.round === 3) return 'won'
   game.round++; game.phase='music'; game.elapsed=0; return 'next'
+}
+
+// Follow the existing forest route without stealth penalties, waiting for the player.
+export function advanceEscort(tail, dt, player) {
+  if (Math.hypot(player.x-tail.x,player.y-tail.y)>105) return 'waiting'
+  if (tail.waypoint >= tail.route.length) return 'arrived'
+  dt = Math.min(dt,50)
+  if (tail.waypoint === tail.digWaypoint && !tail.dug) {
+    tail.digging += dt
+    if (tail.digging >= 2600) { tail.dug = true; return 'dug' }
+    return null
+  }
+  const target=tail.route[tail.waypoint], dx=target.x-tail.x, dy=target.y-tail.y, distance=Math.hypot(dx,dy), step=dt*.027
+  if (distance <= step) { tail.x=target.x; tail.y=target.y; tail.waypoint++; return tail.waypoint >= tail.route.length ? 'arrived' : 'waypoint' }
+  tail.x+=dx/distance*step; tail.y+=dy/distance*step
+  return null
 }
