@@ -16,9 +16,9 @@ defineEmits(['menu', 'save-game', 'load-game', 'interact', 'next-dialog', 'dig',
   <div v-if="location === 'society' && screen === 'game'" class="location-label">ОБЩЕСТВО ВУАЙЕРИСТОВ</div>
   <div v-if="screen === 'game' && (questHint || bikeHint) && !dialog" class="quest-hint">{{ questHint }}<div v-if="bikeHint" class="side-quest">{{ bikeHint }}</div></div>
   <div v-if="fishing" class="fishing-panel" role="status">
-    <div>{{ fishing.kind === 'well' ? 'РЫБАЛКА В КОЛОДЦЕ' : fishing.phase === 'waiting' ? 'ЖДИ ПОКЛЁВКИ' : fishing.phase === 'bite' ? 'КЛЮЁТ! ПОДСЕКАЙ: ПРОБЕЛ / ПКМ' : 'ДЕРЖИ НАТЯЖЕНИЕ В ЦЕНТРЕ' }}</div>
+    <div>{{ fishing.kind === 'well' ? 'РЫБАЛКА В КОЛОДЦЕ' : fishing.phase === 'waiting' ? 'ЖДИ ПОКЛЁВКИ' : fishing.phase === 'bite' ? 'КЛЮЁТ! ПОДСЕКАЙ: ПРОБЕЛ / ЛКМ' : 'ДЕРЖИ НАТЯЖЕНИЕ В ЦЕНТРЕ' }}</div>
     <template v-if="fishing.phase === 'reeling'"><div class="fishing-meter"><span class="fishing-zone"></span><i :style="{left: `${fishing.tension * 100}%`}"></i></div><div class="fishing-progress"><span :style="{width: `${fishing.progress * 100}%`}"></span></div></template>
-    <div class="fishing-actions">R — ВЫТЯНУТЬ УДОЧКУ <span v-if="fishing.kind === 'river'">· ПРОБЕЛ / ПКМ — ПОДСЕЧЬ И ДЕРЖАТЬ</span></div>
+    <div class="fishing-actions">R — ВЫТЯНУТЬ УДОЧКУ <span v-if="fishing.kind === 'river'">· ПРОБЕЛ / ЛКМ — ПОДСЕЧЬ И ДЕРЖАТЬ</span></div>
     <button @click="$emit('retrieve-rod')">ВЫТЯНУТЬ</button>
     <button v-if="fishing.kind === 'river'" @pointerdown.prevent="$emit('fishing-hold',true)" @pointerup="$emit('fishing-hold',false)" @pointercancel="$emit('fishing-hold',false)" @lostpointercapture="$emit('fishing-hold',false)">ПОДСЕЧЬ / ДЕРЖАТЬ</button>
   </div>

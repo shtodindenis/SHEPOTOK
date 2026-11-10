@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createCollision } from '../src/game/collision.js'
-import { FOREST_WIDTH, FOREST_HEIGHT, FOREST_ENTRY, FOREST_EAST, RIVER_PATH_ENTRY, FOREST_SOLIDS, FOREST_PROP_SOLIDS, FOREST_MUSHROOMS, FOREST_PATHS, STASH_SPOTS, CAMP, forestRoad, nearRoute } from '../src/game/forestMap.js'
+import { FOREST_WIDTH, FOREST_HEIGHT, FOREST_ENTRY, FOREST_EAST, RIVER_PATH_ENTRY, FOREST_SOLIDS, FOREST_PROP_SOLIDS, FOREST_MUSHROOMS, FOREST_PATHS, forestPathsFor, STASH_SPOTS, CAMP, forestRoad, nearRoute } from '../src/game/forestMap.js'
 import { createTail, updateTail } from '../src/game/societyQuest.js'
 
 test('all seven tree caches are off the road, distant and reachable', () => {
@@ -43,4 +43,12 @@ test('all seven tree caches are off the road, distant and reachable', () => {
   assert.ok(reachable(FOREST_EAST,20)); assert.ok(reachable(CAMP,30)); assert.ok(reachable(RIVER_PATH_ENTRY,20))
   assert.ok(!FOREST_PATHS.some(path=>nearRoute(CAMP.x,CAMP.y,path,80)), 'camp is exposed by a path')
   assert.ok(FOREST_SOLIDS.filter(tree=>Math.hypot(tree.x-CAMP.x,tree.y-CAMP.y)<115).length >= 8, 'camp needs a screen of trees')
+})
+
+test('forest junctions meet exactly and the eastern route appears when opened', () => {
+  const closed=forestPathsFor(false), opened=forestPathsFor(true)
+  assert.deepEqual(closed[0].at(-1), {x:840,y:224})
+  assert.deepEqual(opened[0].at(-1), {x:960,y:224})
+  assert.deepEqual(opened[0].at(-2), closed[2][0])
+  assert.deepEqual(closed[1].at(-1), closed[2][2])
 })

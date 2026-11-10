@@ -1,0 +1,9 @@
+River sprites
+
+Boat: "The boat" by shangri-la. Cropped from the sprite sheet.
+https://opengameart.org/content/the-boat
+License: CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/
+
+Fishing rod: "Idylwild's Inventory" by Idylwild. Copper fishing rod sprite.
+https://opengameart.org/content/idylwilds-inventory
+License: CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/

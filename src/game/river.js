@@ -1,8 +1,8 @@
-import { Graphics } from 'pixi.js'
+import { Graphics, Sprite } from 'pixi.js'
 export const RIVER_WIDTH=640, RIVER_HEIGHT=384, RIVER_ENTRY={x:320,y:55}
 export const RIVER_ROD={x:205,y:200}, RIVER_FISHER={x:456,y:225}, SHORE_Y=260
 export function canFishAtRiver(p) { return p.y>=215 && p.y<=255 }
-export function buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene}) {
+export function buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene,riverBoat,fishingRod}) {
   const g=new Graphics().rect(0,0,640,384).fill(0x719f60)
   g.moveTo(320,0).lineTo(322,90).lineTo(300,150).lineTo(305,250).stroke({width:30,color:0x97794f,cap:'round',join:'round'})
   g.moveTo(320,0).lineTo(322,90).lineTo(300,150).lineTo(305,250).stroke({width:22,color:0xb89a6d,cap:'round',join:'round'})
@@ -24,14 +24,12 @@ export function buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scen
     collision.addRect({x:x-3.5*scale,y:y-10*scale,w:7*scale,h:8*scale})
   }
   // A moored boat, with water continuing to the lower edge of the scene.
-  const boat=new Graphics().ellipse(485,278,47,8).fill({color:0x244e59,alpha:.3})
-  boat.poly([443,265,524,265,514,280,455,280]).fill(0x573c2e).poly([449,266,518,266,510,275,458,275]).fill(0xa27149)
-  boat.rect(466,267,4,9).fill(0x654433).rect(499,267,4,9).fill(0x654433);boat.zIndex=276;world.addChild(boat)
+  world.addChild(new Graphics().ellipse(485,279,37,7).fill({color:0x244e59,alpha:.28}))
+  const boat=new Sprite(riverBoat);boat.x=452;boat.y=255;boat.width=66;boat.height=27;boat.zIndex=280;world.addChild(boat)
   depthGroup(RIVER_FISHER.y+4,()=>sprite(dungeon,RIVER_FISHER.x-8,RIVER_FISHER.y-15,2,8,1.25,false))
   collision.addRect({x:RIVER_FISHER.x-6,y:RIVER_FISHER.y-6,w:12,h:10})
   if(!scene.rodTaken) {
-    const rod=new Graphics().moveTo(RIVER_ROD.x-12,RIVER_ROD.y+5).lineTo(RIVER_ROD.x+13,RIVER_ROD.y-11).stroke({width:2,color:0x6b4933})
-    rod.circle(RIVER_ROD.x-6,RIVER_ROD.y+2,3).stroke({width:1,color:0xcab88f});rod.zIndex=RIVER_ROD.y+5;world.addChild(rod)
+    const rod=new Sprite(fishingRod);rod.anchor.set(.5);rod.x=RIVER_ROD.x;rod.y=RIVER_ROD.y-2;rod.width=25;rod.height=25;rod.zIndex=RIVER_ROD.y+5;world.addChild(rod)
   }
   collision.addRect({x:0,y:SHORE_Y,w:640,h:124})
 }

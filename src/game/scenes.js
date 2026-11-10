@@ -1,5 +1,5 @@
 import { Graphics } from 'pixi.js'
-import { forestRoad, forestTrees, FOREST_PATHS, FOREST_SOLIDS, FOREST_MUSHROOMS, FOREST_LOGS, FOREST_PROP_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST } from './forestMap.js'
+import { forestRoad, forestTrees, FOREST_PATHS, forestPathsFor, FOREST_SOLIDS, FOREST_MUSHROOMS, FOREST_LOGS, FOREST_PROP_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST } from './forestMap.js'
 import { SHADOWS, MANSION_WALLS, MANSION_FURNITURE } from './mansionLayout.js'
 
 export function buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight }) {
@@ -45,7 +45,7 @@ function buildForest() {
     }
     ground.stroke({width,color,cap:'round',join:'round'})
   }
-  const paths=FOREST_PATHS.map((path,i)=>i===0 && !scene.trip && !scene.wolfDefeated ? [...path.slice(0,-1),{x:865,y:224}] : path)
+  const paths=forestPathsFor(scene.trip || scene.wolfDefeated)
   for(const [i,path] of paths.entries()) road(path,i===0?40:29,0x8c724c)
   for(const [i,path] of paths.entries()) road(path,i===0?32:21,0xb8996b)
   world.addChild(ground)

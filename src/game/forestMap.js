@@ -12,16 +12,18 @@ export const stashAt = index => STASH_SPOTS[Number.isInteger(index) && index >= 
 export const MAIN_TRAIL = [
   {x:0,y:224},{x:160,y:224},{x:160,y:320},{x:336,y:320},
   {x:336,y:208},{x:512,y:208},{x:512,y:352},{x:704,y:352},
-  {x:704,y:224},{x:960,y:224},
+  {x:704,y:224},{x:840,y:224},{x:960,y:224},
 ]
-export const CACHE_TRAIL = [{x:512,y:352},{x:512,y:464},{x:850,y:464}]
-export const RIVER_TRAIL = [{x:840,y:224},{x:880,y:270},{x:880,y:604}]
+export const CACHE_TRAIL = [{x:512,y:352},{x:512,y:464},{x:880,y:464}]
+export const RIVER_TRAIL = [{x:840,y:224},{x:880,y:270},{x:880,y:464},{x:880,y:604}]
 export const SIDE_TRAILS = [
   RIVER_TRAIL,
   [{x:336,y:208},{x:365,y:160},{x:415,y:145}],
-  [{x:704,y:224},{x:750,y:190},{x:802,y:192}],
 ]
 export const FOREST_PATHS = [MAIN_TRAIL,CACHE_TRAIL,...SIDE_TRAILS]
+export function forestPathsFor(open) {
+  return FOREST_PATHS.map((path,i)=>i===0 && !open ? path.slice(0,-1) : path)
+}
 export function nearRoute(x, y, points, radius) {
   return points.slice(1).some((b, i) => {
     const a = points[i], dx = b.x-a.x, dy = b.y-a.y

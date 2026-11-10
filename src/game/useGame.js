@@ -414,9 +414,8 @@ export function useGame() {
     keys.add(k)
   }
   function onUp(event) { keys.delete(event.key.toLowerCase()); if (event.code==='Space') fishingPress(false) }
-  function onMouseDown(event) { if (event.button===2 && fishing.value) { event.preventDefault(); fishingPress(true) } }
-  function onMouseUp(event) { if (event.button===2) fishingPress(false) }
-  function onContextMenu(event) { if (fishing.value) event.preventDefault() }
+  function onMouseDown(event) { if (event.button===0 && fishing.value && !event.target.closest('button')) { event.preventDefault(); fishingPress(true) } }
+  function onMouseUp(event) { if (event.button===0) fishingPress(false) }
   function updateQuest(delta) {
     const actors = []
     if (questState.value === 'tail' && tail && location.value === 'forest') {
@@ -507,7 +506,7 @@ export function useGame() {
   function togglePhoto() { if (note.value && !dialog.value && !choice.value && !quiz.value && (photoOpen.value || inventory.value[selectedInventorySlot.value] === 'photo')) { keys.clear(); photoOpen.value = !photoOpen.value } }
   const onBlur = () => { keys.clear(); fishingPress(false) }
   onMounted(async () => {
-    window.addEventListener('mousedown', onMouseDown); window.addEventListener('mouseup', onMouseUp); window.addEventListener('contextmenu', onContextMenu); window.addEventListener('pointerdown', audio.unlockMusic); window.addEventListener('keydown', audio.unlockMusic); syncMusic()
+    window.addEventListener('mousedown', onMouseDown); window.addEventListener('mouseup', onMouseUp); window.addEventListener('pointerdown', audio.unlockMusic); window.addEventListener('keydown', audio.unlockMusic); syncMusic()
     const created = await createWorld(canvasHost.value, update)
     if (disposed) { created.destroy(); return }
     renderer = created; drawScene()
@@ -516,7 +515,7 @@ export function useGame() {
   onUnmounted(() => {
     disposed = true; clearTimeout(curseTimer); clearTimeout(achievementTimer); battle.stop(); audio.destroy(); renderer?.destroy()
     window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur)
-    window.removeEventListener('mousedown', onMouseDown); window.removeEventListener('mouseup', onMouseUp); window.removeEventListener('contextmenu', onContextMenu); window.removeEventListener('pointerdown', audio.unlockMusic); window.removeEventListener('keydown', audio.unlockMusic)
+    window.removeEventListener('mousedown', onMouseDown); window.removeEventListener('mouseup', onMouseUp); window.removeEventListener('pointerdown', audio.unlockMusic); window.removeEventListener('keydown', audio.unlockMusic)
   })
   return { canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle }
 }

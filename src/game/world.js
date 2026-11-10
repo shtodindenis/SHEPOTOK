@@ -14,10 +14,10 @@ export async function createWorld(host, onTick) {
   const app = new Application()
   await app.init({ width: VIEW_WIDTH, height: VIEW_HEIGHT, background: '#202520', antialias: false, preference: 'webgl', resolution: 1 })
   host.appendChild(app.canvas)
-  const [sheet, dungeon, furniture, interior, bike, caves] = await Promise.all([
-    Assets.load('/assets/kenney-tiny-town.png'), Assets.load('/assets/kenney-tiny-dungeon.png'), Assets.load('/assets/kenney-roguelike.png'), Assets.load('/assets/kenney-roguelike-indoor.png'), Assets.load('/assets/pitbike.png'), Assets.load('/assets/kenney-caves.png'),
+  const [sheet, dungeon, furniture, interior, bike, caves, riverBoat, fishingRod] = await Promise.all([
+    Assets.load('/assets/kenney-tiny-town.png'), Assets.load('/assets/kenney-tiny-dungeon.png'), Assets.load('/assets/kenney-roguelike.png'), Assets.load('/assets/kenney-roguelike-indoor.png'), Assets.load('/assets/pitbike.png'), Assets.load('/assets/kenney-caves.png'), Assets.load('/assets/river-boat.png'), Assets.load('/assets/fishing-rod.png'),
   ])
-  for (const texture of [sheet, dungeon, furniture, interior, bike, caves]) texture.source.scaleMode = 'nearest'
+  for (const texture of [sheet, dungeon, furniture, interior, bike, caves, riverBoat, fishingRod]) texture.source.scaleMode = 'nearest'
   const world = new Container(), textures = new WeakMap()
   world.sortableChildren = true
   app.stage.addChild(world)
@@ -87,7 +87,7 @@ export async function createWorld(host, onTick) {
     collision = createCollision(mapWidth, mapHeight)
     runningTrees = []
     for (const child of world.removeChildren()) child.destroy({ children: true })
-    if (scene.location === 'river') buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene})
+    if (scene.location === 'river') buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene,riverBoat,fishingRod})
     else if (scene.location === 'village') buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene})
     else if (scene.location === 'hut') {
       const room = new Container(); room.scale.set(HUT_SCALE); room.sortableChildren = true; world.addChild(room)
@@ -141,8 +141,8 @@ export async function createWorld(host, onTick) {
       }
       if (item.kind?.startsWith('dropped-')) {
         if (!image) {
-          image=new Graphics()
-          if (item.kind === 'dropped-rod') image.moveTo(-8,5).lineTo(8,-8).stroke({width:2,color:0x8d603c})
+          image=item.kind === 'dropped-rod' ? new Sprite(fishingRod) : new Graphics()
+          if (item.kind === 'dropped-rod') { image.anchor.set(.5); image.width=20; image.height=20 }
           else if (item.kind === 'dropped-shovel') image.rect(-1,-10,3,12).fill(0xa97949).rect(-4,1,9,5).fill(0xa9afa3)
           else if (item.kind === 'dropped-photo') image.rect(-7,-5,14,10).fill(0xe8d7aa).rect(-4,-3,8,5).fill(0x829075)
           else image.rect(-6,-7,12,13).fill(0x789653).rect(-4,-9,8,4).fill(0xc7b48b)
