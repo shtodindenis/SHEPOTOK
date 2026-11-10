@@ -40,6 +40,23 @@ for (let row=0;row<16;row++) for(let col=0;col<24;col++) {
 // Put the landmark trunk on the far side of its dig point, clear of the trail.
 for (const [i,p] of STASH_SPOTS.entries()) forestTrees.push({x:p.x-8,y:p.y+(p.y>464 ? 1 : -56),scale:2.1,tint:[0xe5e8bf,0xcde9c5,0xffffff][i%3],col:i%2?3:4,flip:i%2===1, landmark:true})
 export const FOREST_SOLIDS = forestTrees.map(t=>({x:t.x+8-3.5*t.scale,y:t.y+32-10*t.scale,w:7*t.scale,h:8*t.scale}))
+// A small set of visible fly agarics, each offering the same one-time effect.
+export const FOREST_MUSHROOMS = [
+  {x:180,y:184}, {x:282,y:277}, {x:365,y:238}, {x:478,y:244},
+  {x:554,y:312}, {x:654,y:385}, {x:748,y:180}, {x:865,y:245},
+]
+export const FOREST_LOGS = []
+for(let y=55;y<600;y+=59) for(let x=35;x<930;x+=71) {
+  if ((x*7+y*3)%11>7 || FOREST_PATHS.some(path=>nearRoute(x+8,y+12,path,35)) ||
+      Math.hypot(x-CAMP.x,y-CAMP.y)<80 || STASH_SPOTS.some(p=>Math.hypot(x-p.x,y-p.y)<45) ||
+      FOREST_MUSHROOMS.some(p=>Math.hypot(x-p.x,y-p.y)<30) ||
+      FOREST_SOLIDS.some(r=>x+17>=r.x-2 && x<=r.x+r.w+2 && y+17>=r.y-2 && y<=r.y+r.h+2)) continue
+  FOREST_LOGS.push({x,y})
+}
+export const FOREST_PROP_SOLIDS = [
+  ...FOREST_MUSHROOMS.map(({x,y})=>({x:x+2,y:y+10,w:12,h:5})),
+  ...FOREST_LOGS.map(({x,y})=>({x:x+2,y:y+9,w:13,h:6})),
+]
 export function behindTree(player) {
   return forestTrees.some(t => Math.abs(player.x-(t.x+8))<25 && player.y>=t.y+8 && player.y<=t.y+50)
 }

@@ -1,5 +1,5 @@
 import { Graphics } from 'pixi.js'
-import { forestRoad, forestTrees, FOREST_PATHS, FOREST_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST } from './forestMap.js'
+import { forestRoad, forestTrees, FOREST_PATHS, FOREST_SOLIDS, FOREST_MUSHROOMS, FOREST_LOGS, FOREST_PROP_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST } from './forestMap.js'
 import { SHADOWS, MANSION_WALLS, MANSION_FURNITURE } from './mansionLayout.js'
 
 export function buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight }) {
@@ -71,13 +71,12 @@ function buildForest() {
     })
   }
   for(const rect of FOREST_SOLIDS) collision.addRect(rect)
-  if (!scene.trip) objectSprite(sheet,180,184,5,2,1.25)
-  for (let y=48;y<mapHeight-24;y+=41) for(let x=30;x<mapWidth-24;x+=53) {
-    if((x*3+y*7)%11<5 || forestRoad(x,y) || Math.hypot(x-CAMP.x,y-CAMP.y)<70 || Math.hypot(x-stash.x,y-stash.y)<30) continue
-    objectSprite(sheet,x,y,(x+y)%3===0?10:5,(x+y)%3===0?8:2,1,false)
+  // Shadows and small footprints make the props solid without blocking whole trails.
+  for(const [kind,objects] of [['mushroom',FOREST_MUSHROOMS],['log',FOREST_LOGS]]) for(const {x,y} of objects) {
+    world.addChild(new Graphics().ellipse(x+8,y+14,8,3).fill({color:0x304a32,alpha:.25}))
+    objectSprite(sheet,x,y,kind==='mushroom'?5:10,kind==='mushroom'?2:8,1,false)
   }
-  // Distinctive objects next to each tree make the photograph useful.
-  for(const [i,p] of STASH_SPOTS.entries()) objectSprite(sheet,p.x+(i%2?22:-30),p.y-5,i%2?10:5,i%2?8:2,1,false)
+  for(const rect of FOREST_PROP_SOLIDS) collision.addRect(rect)
   campTent(CAMP.x-36,CAMP.y-55)
   objectSprite(dungeon,CAMP.x+30,CAMP.y-17,6,9,1.4,false)
   objectSprite(dungeon,CAMP.x,CAMP.y-8,5,9,1.1,false)
