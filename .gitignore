@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.runtime/
+node.zip
+node-index.json
+tiny-town.zip
+asset-source/
+dungeon-source/
+roguelike-source/
+*.zip
+*.log
+
+# Local investigation artifacts
+.openai/
+.app-before-refactor.vue
+.*-check.png
+*-check.png
+.*-check.mjs
+.extract-*.mjs
+.split-style.mjs
+.verify-*.mjs
+.DS_Store
+Thumbs.db
