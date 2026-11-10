@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createCollision } from '../src/game/collision.js'
-import { FOREST_WIDTH, FOREST_HEIGHT, FOREST_ENTRY, FOREST_EAST, RIVER_PATH_ENTRY, FOREST_SOLIDS, FOREST_PROP_SOLIDS, FOREST_MUSHROOMS, FOREST_PATHS, forestPathsFor, STASH_SPOTS, CAMP, forestRoad, nearRoute } from '../src/game/forestMap.js'
+import { FOREST_WIDTH, FOREST_HEIGHT, FOREST_ENTRY, FOREST_EAST, RIVER_PATH_ENTRY, FOREST_SIGN, FOREST_SIGN_SOLID, FOREST_SOLIDS, FOREST_PROP_SOLIDS, FOREST_MUSHROOMS, FOREST_PATHS, forestPathsFor, STASH_SPOTS, CAMP, forestRoad, nearRoute } from '../src/game/forestMap.js'
 import { createTail, updateTail } from '../src/game/societyQuest.js'
 
 test('all seven tree caches are off the road, distant and reachable', () => {
   const c=createCollision(FOREST_WIDTH,FOREST_HEIGHT)
-  for(const rect of [...FOREST_SOLIDS,...FOREST_PROP_SOLIDS]) c.addRect(rect)
+  for(const rect of [...FOREST_SOLIDS,...FOREST_PROP_SOLIDS,FOREST_SIGN_SOLID]) c.addRect(rect)
   const seen=new Set(), queue=[[40,224]]
   for(let i=0;i<queue.length;i++) {
     const [x,y]=queue[i], key=`${x},${y}`
@@ -19,6 +19,8 @@ test('all seven tree caches are off the road, distant and reachable', () => {
       if(Math.hypot(x-point.x,y-point.y)<radius && seen.has(`${x},${y}`)) return true
     return false
   }
+  assert.equal(c.blocked(FOREST_SIGN.x,FOREST_SIGN.y-5),true)
+  assert.ok(reachable(FOREST_SIGN,23), 'forest sign has no reachable approach')
   assert.equal(STASH_SPOTS.length,7)
   assert.ok(FOREST_MUSHROOMS.length >= 3 && FOREST_MUSHROOMS.length <= 10)
   for (const mushroom of FOREST_MUSHROOMS) assert.ok(reachable({x:mushroom.x+8,y:mushroom.y+8},24), `unreachable mushroom at ${mushroom.x},${mushroom.y}`)

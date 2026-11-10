@@ -1,6 +1,8 @@
 export const FOREST_WIDTH = 960, FOREST_HEIGHT = 640
 export const FOREST_ENTRY = { x: 40, y: 224 }, FOREST_EAST = { x: 920, y: 224 }
 export const RIVER_PATH_ENTRY = {x:880,y:604}
+export const FOREST_SIGN = {x:92,y:207}
+export const FOREST_SIGN_SOLID = {x:89,y:200,w:6,h:7}
 export const CAMP = { x: 192, y: 520 }
 // Each spot is below its own tree, well away from the entrance and camp.
 export const STASH_SPOTS = [

@@ -11,7 +11,7 @@ import { achievements } from './achievements.js'
 import { QUIZ_TIME_MS, quizQuestions, quizResult, validQuiz } from './wellQuiz.js'
 import { VILLAGE, OTHER_DOORS } from './village.js'
 import { createWorld } from './world.js'
-import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_MUSHROOMS, RIVER_PATH_ENTRY } from './forestMap.js'
+import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_MUSHROOMS, RIVER_PATH_ENTRY, FOREST_SIGN } from './forestMap.js'
 import { QUEST_STATES, SEATS, advanceChairs, createChairs, createTail, inShadow, sitDown, updateTail } from './societyQuest.js'
 import { MANSION_ENTRY, MANSION_CHAIR, createMansionPatrol, advanceMansionPatrol } from './mansionLayout.js'
 
@@ -330,7 +330,7 @@ export function useGame() {
     if (location.value === 'forest') return [
       ...(!trip.value && questState.value !== 'tail' ? [{...RIVER_PATH_ENTRY,label:'ПЕРЕЙТИ К РЕКЕ',action:()=>transition('river',RIVER_ENTRY.x,RIVER_ENTRY.y+12)}] : []),
       { x: 18, y: 224, label: 'ВЫЙТИ ИЗ ЛЕСА', action: () => trip.value ? speak('freedom', () => finishEnding('freedom')) : transition('village', VILLAGE.forest.x-10, VILLAGE.forest.y) },
-      { x: 92, y: 207, label: 'ПРОЧИТАТЬ УКАЗАТЕЛЬ', action: () => speak('forestSign') },
+      { ...FOREST_SIGN, label: 'ПРОЧИТАТЬ УКАЗАТЕЛЬ', action: () => speak('forestSign') },
       ...(questState.value === 'tail_ready' ? [{ x: FOREST_EAST.x-30, y: FOREST_EAST.y, label: 'НАЧАТЬ СЛЕЖКУ ЗА БАБКОЙ', action: startTail }] : []),
       ...(!mushroomUsed.value ? FOREST_MUSHROOMS.map(({x,y}) => ({ x:x+8, y:y+8, label:'СЪЕСТЬ МУХОМОР', action: () => speak('mushroom', () => { mushroomUsed.value = true; trip.value = true; unlockAchievement('trip'); drawScene() }) })) : []),
       { x:CAMP.x, y:CAMP.y, label:'ОСМОТРЕТЬ БУТЫЛКУ', action: () => { unlockAchievement('flashback'); speak('flashback') } },

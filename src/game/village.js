@@ -20,6 +20,7 @@ export const VILLAGE_TREES = TREE_POSITIONS.map(([x,y], i) => ({
 }))
 export const VILLAGE_MUSHROOMS = [[225,175],[236,133],[485,192],[722,227],[1000,350],[267,492],[497,480],[740,435]]
 export const VILLAGE_SOLIDS = [
+  {x:VILLAGE.sign.x-3,y:VILLAGE.sign.y-7,w:6,h:7},
   ...VILLAGE_MUSHROOMS.map(([x,y])=>({x:x+2,y:y+10,w:12,h:5})),
   ...HOUSES.map(h => ({x:h.x,y:h.y+6,w:48*(h.scale || 1.5),h:48*(h.scale || 1.5)-6})),
   ...VILLAGE_TREES.map(({x,y,scale}) => ({x:x-3.5*scale,y:y-10*scale,w:7*scale,h:8*scale})),

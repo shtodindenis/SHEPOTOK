@@ -6,6 +6,7 @@ import { VILLAGE, OTHER_DOORS, VILLAGE_SOLIDS, VILLAGE_WIDTH, VILLAGE_HEIGHT } f
 test('all village interactions are reachable from home with the actual collision map', () => {
   const collision = createCollision(VILLAGE_WIDTH,VILLAGE_HEIGHT)
   for (const rect of VILLAGE_SOLIDS) collision.addRect(rect)
+  assert.equal(collision.blocked(VILLAGE.sign.x,VILLAGE.sign.y-5),true)
   const step=4, start=[108,172], queue=[start], visited=new Set([start.join(',')])
   for(let i=0;i<queue.length;i++) {
     const [x,y]=queue[i]

@@ -1,5 +1,5 @@
 import { Graphics } from 'pixi.js'
-import { forestRoad, forestTrees, FOREST_PATHS, forestPathsFor, FOREST_SOLIDS, FOREST_MUSHROOMS, FOREST_LOGS, FOREST_PROP_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST } from './forestMap.js'
+import { forestRoad, forestTrees, FOREST_PATHS, forestPathsFor, FOREST_SOLIDS, FOREST_MUSHROOMS, FOREST_LOGS, FOREST_PROP_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_SIGN_SOLID } from './forestMap.js'
 import { SHADOWS, MANSION_WALLS, MANSION_FURNITURE } from './mansionLayout.js'
 
 export function buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight }) {
@@ -87,7 +87,8 @@ function buildForest() {
   campTent(CAMP.x-36,CAMP.y-55)
   objectSprite(dungeon,CAMP.x+30,CAMP.y-17,6,9,1.4,false)
   objectSprite(dungeon,CAMP.x,CAMP.y-8,5,9,1.1,false)
-  sprite(sheet,84,190,11,6)
+  objectSprite(sheet,84,190,11,6)
+  collision.addRect(FOREST_SIGN_SOLID)
   if(scene.trip && !scene.wolfDefeated) objectSprite(dungeon,FOREST_EAST.x,FOREST_EAST.y-16,4,10,1.2)
 }
 
