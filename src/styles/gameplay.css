@@ -17,3 +17,11 @@
 @media(max-width:600px){.inventory{top:34px;gap:2px;padding:3px}.inventory-slot{width:29px;height:29px}.inventory-number{font-size:6px;left:2px;top:2px}.rag-icon{left:6px;top:9px;width:16px;height:11px}.quest-hint{top:72px}.forest-tools{top:72px}}
 
 .inventory-drop-hint{position:absolute;top:100%;right:0;white-space:nowrap;background:#263329e8;color:#eee3bf;padding:5px;font-size:7px;line-height:1.5}
+
+.shovel-icon,.photo-icon,.treasure-icon{position:absolute;display:block;left:50%;top:50%;image-rendering:pixelated}
+.shovel-icon{width:5px;height:22px;background:#a97949;transform:translate(-50%,-55%) rotate(35deg);border-top:3px solid #d3ac72}
+.shovel-icon:after{content:"";position:absolute;left:-3px;bottom:-7px;width:11px;height:9px;background:#a7afa3;border:2px solid #6f7973;border-radius:0 0 5px 5px}
+.photo-icon{width:22px;height:17px;transform:translate(-50%,-42%) rotate(-6deg);background:#e8d7aa;border:2px solid #9f8968;box-shadow:inset 0 -5px #b5a279}
+.photo-icon:after{content:"×";position:absolute;left:8px;top:0;color:#a44538;font:bold 11px Arial}
+.treasure-icon{width:19px;height:19px;transform:translate(-50%,-40%);background:#7a9a58;border:2px solid #d3c399;border-radius:3px 3px 6px 6px;box-shadow:inset 0 3px #c1b190}
+@media(max-width:600px){.shovel-icon{height:15px}.photo-icon{width:16px;height:13px}.treasure-icon{width:15px;height:15px}}

@@ -23,8 +23,8 @@ export function useGame() {
   const quiz = ref(null), quizSelected = ref(0), achievementUnlocked = ref(readAchievements()), achievementToast = ref(null)
   const photoOpen = ref(false), photo = ref('')
   const ragTaken = ref(false), bikeQuest = ref(false), bikeClean = ref(false), selectedInventorySlot = ref(-1)
-  const droppedRag = ref(null)
-  const inventory = computed(() => [ragTaken.value ? 'rag' : null, null, null, null, null, null])
+  const droppedRag = ref(null), droppedItems = ref({})
+  const inventory = computed(() => [ragTaken.value ? 'rag' : null, shovel.value && !shovelUsed.value && !droppedItems.value.shovel ? 'shovel' : null, note.value && !droppedItems.value.photo ? 'photo' : null, stashState.value === 'player' && !droppedItems.value.treasure ? 'treasure' : null, null, null])
   const bikeHint = computed(() => getBikeHint({ bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, ragTaken: ragTaken.value, droppedRag: droppedRag.value }))
   const quizQuestion = computed(() => quiz.value ? quizQuestions[quiz.value.index] : null)
   const quizSeconds = computed(() => quiz.value ? Math.ceil(quiz.value.remaining / 1000) : 0)
@@ -48,16 +48,25 @@ export function useGame() {
     audio.setMusic(track)
   }
   watch([screen, location, questState, sound], syncMusic, { flush:'sync' })
-  const questHint = computed(() => getQuestHint({ questState: questState.value, questStatus: questStatus.value, location: location.value, witchAngry: witchAngry.value, stashState: stashState.value, stage: stage.value, shovel: shovel.value, note: note.value }))
+  const questHint = computed(() => getQuestHint({ questState: questState.value, questStatus: questStatus.value, location: location.value, witchAngry: witchAngry.value, stashState: stashState.value, stage: stage.value, shovel: shovel.value, shovelUsed: shovelUsed.value, note: note.value }))
 
   const battle = createSkillCheck(
-    () => { screen.value = 'game'; audio.beep(520, .12); speak('wolfVictory', () => { trip.value = false; wolfDefeated.value = true; transition('society', 160, 151) }) },
-    () => { unlockAchievement('wolf_loss'); screen.value = 'game'; audio.beep(110, .2); speak('wolfFail', () => finishEnding('wolf')) },
+    () => { screen.value = 'game'; audio.beep(520, .12); speak('wolfVictory', () => { trip.value = false; wolfDefeated.value = true; transition('society', 160, 151) }, true) },
+    () => { unlockAchievement('wolf_loss'); screen.value = 'game'; audio.beep(110, .2); speak('wolfFail', () => finishEnding('wolf'), true) },
   )
 
   function snapshot() { return { location: location.value, stage: stage.value, stashIndex: stashIndex.value, note: note.value, shovel: shovel.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, carriedChair, ragTaken: ragTaken.value || !!droppedRag.value, bikeClean: bikeClean.value } }
-  function drawScene() { if (renderer) { renderer.draw(snapshot(), player); if (location.value === 'forest') photo.value = renderer.forestPhoto(); near.value = '' } }
-  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 4, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
+  function drawScene() {
+    if (!renderer) return
+    if (note.value && !photo.value && location.value !== 'forest') {
+      renderer.draw({ ...snapshot(), location:'forest', trip:false }, { ...player })
+      photo.value = renderer.forestPhoto()
+    }
+    renderer.draw(snapshot(), player)
+    if (location.value === 'forest') photo.value = renderer.forestPhoto()
+    near.value = ''
+  }
+  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 5, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, droppedItems: droppedItems.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
   function save() { writeSave(saveData()) }
   function unlockEnding(id) {
     if (!unlocked.value.includes(id)) unlocked.value = [...unlocked.value, id]
@@ -78,7 +87,9 @@ export function useGame() {
       curseTimer = window.setTimeout(() => { screen.value = 'ending' }, 3000)
     }, 700)
   }
-  function speak(id, done) { keys.clear(); dialog.value = { lines: conversations[id], index: 0, done }; audio.beep(260) }
+  const brokenLine = ['ТИГРАН', 'Черт её подери, лопата сломалась, что за хуйню мне дала гадалка']
+  function speak(id, done, broken = false) { keys.clear(); dialog.value = { lines: broken ? [...conversations[id], brokenLine] : conversations[id], index: 0, done }; audio.beep(260) }
+  function breakShovel() { shovelUsed.value = true; if (selectedInventorySlot.value === 1) selectedInventorySlot.value = -1; save() }
   function nextDialog() {
     if (!dialog.value) return
     audio.beep(390)
@@ -107,7 +118,7 @@ export function useGame() {
   }
   function start(restore = false, slotSave = null) {
     const saved = slotSave || (restore ? readSave() : null)
-    dialog.value = null; choice.value = false; photoOpen.value = false; quiz.value = null; pendingDiver.value = ''; battle.stop(); endingKind.value = 'healed'; keys.clear(); tail = null; chairGame = null; carriedChair = false
+    dialog.value = null; choice.value = false; photoOpen.value = false; photo.value = ''; quiz.value = null; pendingDiver.value = ''; battle.stop(); endingKind.value = 'healed'; keys.clear(); tail = null; chairGame = null; carriedChair = false
     if (saved) {
       stashIndex.value = Number.isInteger(saved.stashIndex) && saved.stashIndex >= 0 && saved.stashIndex < STASH_SPOTS.length ? saved.stashIndex : 0
       stage.value = saved.stage; location.value = saved.location; player.x = saved.player.x; player.y = saved.player.y
@@ -118,6 +129,7 @@ export function useGame() {
       if (saved.location === 'hut' && saved.hutVersion !== 2) { player.x = 75; player.y = 169 }
       if (saved.location === 'home' && saved.homeVersion !== 1) { player.x = 256; player.y = 270 }
       droppedRag.value = saved.droppedRag && ['home','village','hut','forest','society','mansion'].includes(saved.droppedRag.location) && Number.isFinite(saved.droppedRag.x) && Number.isFinite(saved.droppedRag.y) ? { ...saved.droppedRag } : null
+      droppedItems.value = Object.fromEntries(Object.entries(saved.droppedItems || {}).filter(([kind,p]) => ['shovel','photo','treasure'].includes(kind) && p && ['home','village','hut','forest','society','mansion'].includes(p.location) && Number.isFinite(p.x) && Number.isFinite(p.y)))
       ragTaken.value = !!saved.ragTaken && !droppedRag.value; bikeQuest.value = !!saved.bikeQuest; bikeClean.value = !!saved.bikeClean
       selectedInventorySlot.value = Number.isInteger(saved.selectedInventorySlot) && saved.selectedInventorySlot >= 0 && saved.selectedInventorySlot < 6 ? saved.selectedInventorySlot : -1
       shovel.value = !!saved.shovel; shovelUsed.value = saved.shovelUsed; note.value = !!saved.note; trip.value = !!saved.trip; wolfDefeated.value = saved.wolfDefeated
@@ -134,7 +146,7 @@ export function useGame() {
       if (questState.value === 'tail') { questState.value = 'tail_ready'; location.value = 'forest'; player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y }
       if (questState.value === 'heist' || location.value === 'mansion') { questState.value = 'heist_ready'; location.value = 'village'; player.x = VILLAGE.mansion.x; player.y = VILLAGE.mansion.y }
       if (questState.value === 'chairs') { questState.value = 'report2'; location.value = 'society'; player.x = 160; player.y = 151 }
-      if (saved.location === 'forest' && saved.forestVersion !== 4) {
+      if (saved.location === 'forest' && saved.forestVersion !== 5) {
         player.x = questState.value === 'tail_ready' ? FOREST_EAST.x-30 : 40
         player.y = 224
       }
@@ -142,7 +154,7 @@ export function useGame() {
       if (societyProgress.value === 3 || questState.value === 'done') unlockAchievement('throne', false)
       if (trip.value) unlockAchievement('trip', false)
     } else {
-      droppedRag.value = null; ragTaken.value = false; bikeQuest.value = false; bikeClean.value = false; selectedInventorySlot.value = -1
+      droppedRag.value = null; droppedItems.value = {}; ragTaken.value = false; bikeQuest.value = false; bikeClean.value = false; selectedInventorySlot.value = -1
       stage.value = 0; location.value = 'home'; player.x = 145; player.y = 110; shovel.value = false; shovelUsed.value = false; note.value = false; trip.value = false; wolfDefeated.value = false
       societyProgress.value = 0
       questState.value = 'none'
@@ -185,10 +197,10 @@ export function useGame() {
   }
   function encounterWolf() {
     if (wolfDefeated.value) { transition('society', 160, 151); return }
-    if (shovel.value && !shovelUsed.value) speak('wolfReady', () => { keys.clear(); screen.value = 'battle-ready' })
+    if (inventory.value.includes('shovel')) speak('wolfReady', () => { keys.clear(); screen.value = 'battle-ready' })
     else speak('wolf', () => finishEnding('wolf'))
   }
-  function startBattle() { keys.clear(); battle.start(); screen.value = 'battle' }
+  function startBattle() { keys.clear(); breakShovel(); battle.start(); screen.value = 'battle' }
   function captain() {
     if (questState.value === 'none') speak('captainFirst', () => { questState.value = 'tail_ready' })
     else if (questState.value === 'tail_ready') speak('tailReminder')
@@ -218,14 +230,17 @@ export function useGame() {
   }
   function selectInventorySlot(index) {
     if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || index < 0 || index >= 6) return
-    selectedInventorySlot.value = index; save()
+    selectedInventorySlot.value = selectedInventorySlot.value === index ? -1 : index; save()
   }
   function dropItem() {
-    if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || selectedInventorySlot.value !== 0 || !ragTaken.value || !renderer) return
-    const position = renderer.findDrop(player)
+    if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || !renderer) return
+    const kind=inventory.value[selectedInventorySlot.value]
+    if (!kind) return
+    const position=renderer.findDrop(player)
     if (!position) return
-    droppedRag.value = { location: location.value, ...position }; ragTaken.value = false; selectedInventorySlot.value = -1
-    drawScene(); save()
+    if (kind === 'rag') { droppedRag.value={ location:location.value, ...position }; ragTaken.value=false }
+    else droppedItems.value={ ...droppedItems.value, [kind]:{ location:location.value, ...position } }
+    selectedInventorySlot.value=-1; drawScene(); save()
   }
   function inspectBike() {
     if (bikeClean.value) { speak('bikeClean'); return }
@@ -245,7 +260,7 @@ export function useGame() {
       { x: 256, y: 290, label: 'ВЫЙТИ В ДЕРЕВНЮ', action: () => transition('village', VILLAGE.home.x, VILLAGE.home.y) },
       ...(!ragTaken.value && !droppedRag.value ? [{x:407,y:258,label:'ВЗЯТЬ ТРЯПКУ',action: () => { ragTaken.value=true; selectedInventorySlot.value=0; drawScene(); save(); speak('ragTake') }}] : []),
       { x: 58, y: 87, label: stage.value === 3 ? 'ИСПОЛЬЗОВАТЬ ШЕПОТОК' : 'ОСМОТРЕТЬ КРОВАТЬ', action: () => stage.value === 3 && witchAngry.value ? speak('healingRevoked') : stage.value === 3 ? speak('finish', () => finishEnding('healed')) : speak('bed') },
-      ...(stage.value === 2 ? [{ x: 148, y: 241, label: 'ИСПОЛЬЗОВАТЬ ВОДНИК', action: () => speak('waterpipe', triggerCurse) }] : []),
+      ...(stage.value === 2 && !droppedItems.value.treasure ? [{ x: 148, y: 241, label: 'ИСПОЛЬЗОВАТЬ ВОДНИК', action: () => speak('waterpipe', triggerCurse) }] : []),
       ...[
         [469, 78, 'ОСМОТРЕТЬ ХОЛОДИЛЬНИК', 'homeFridge'],
         [342, 120, 'ОСМОТРЕТЬ СТУЛ', 'homeChair'], [445, 120, 'ОСМОТРЕТЬ СТУЛ', 'homeChair'],
@@ -262,9 +277,11 @@ export function useGame() {
       { x: 75, y: 179, label: 'ВЫЙТИ ИЗ ДОМА', action: () => transition('village', VILLAGE.hut.x, VILLAGE.hut.y) },
       { x: 238, y: 78, label: 'ПОГОВОРИТЬ С ГАДАЛКОЙ', action: () => {
         if (witchAngry.value) speak('witchAngry')
+        else if (shovel.value && shovelUsed.value && stage.value === 1 && stashState.value === 'buried') speak('replacementShovel', () => { shovelUsed.value = false; save() })
         else if (stashState.value === 'witch' && stage.value < 2) speak(stage.value === 0 ? 'witchRecoveredEarly' : 'witchRecovered', () => { stashState.value = 'returned'; stage.value = 3 })
         else if (stage.value === 0) speak('witch', () => { stage.value = 1; shovelPermission.value = true })
         else if (stage.value === 1) speak('witch')
+        else if (stage.value === 2 && droppedItems.value.treasure) speak('treasureMissing')
         else if (stage.value === 2) speak('reward', () => { stage.value = 3; stashState.value = 'returned' })
         else speak('reward')
       } },
@@ -302,17 +319,27 @@ export function useGame() {
       ...OTHER_DOORS.map(door => ({ ...door, label:'ОСМОТРЕТЬ ДОМ', action: () => speak('villageHouse') })),
     ]
   }
-  function closest() { const dropped = droppedRag.value?.location === location.value ? [{ ...droppedRag.value, label:'ПОДНЯТЬ ТРЯПКУ', action: () => { droppedRag.value = null; ragTaken.value = true; selectedInventorySlot.value = 0; drawScene(); save() } }] : []; return [...dropped, ...interactables()].map(o => ({ ...o, d: Math.hypot(player.x - o.x, player.y - o.y) })).filter(o => o.d < 25).sort((a, b) => a.d - b.d)[0] }
-  function interact() { if (screen.value !== 'game' || choice.value) return; if (dialog.value) { nextDialog(); return }; const item = closest(); if (item) { audio.beep(470); item.action() } }
+  function closest() { const dropped = droppedRag.value?.location === location.value ? [{ ...droppedRag.value, label:'ПОДНЯТЬ ТРЯПКУ', action: () => { droppedRag.value = null; ragTaken.value = true; selectedInventorySlot.value = 0; drawScene(); save() } }] : []; for (const [kind, point] of Object.entries(droppedItems.value)) if (point.location === location.value) dropped.push({ ...point, label: ({shovel:'ПОДНЯТЬ ЛОПАТУ',photo:'ПОДНЯТЬ ФОТОГРАФИЮ',treasure:'ПОДНЯТЬ КЛАД'})[kind], action: () => { const next={...droppedItems.value}; delete next[kind]; droppedItems.value=next; selectedInventorySlot.value=({shovel:1,photo:2,treasure:3})[kind]; drawScene(); save() } }); return [...dropped, ...interactables()].map(o => ({ ...o, d: Math.hypot(player.x - o.x, player.y - o.y) })).filter(o => o.d < 25).sort((a, b) => a.d - b.d)[0] }
+  function interact() {
+    if (screen.value !== 'game' || choice.value || quiz.value || photoOpen.value) return
+    if (dialog.value) { nextDialog(); return }
+    if (inventory.value[selectedInventorySlot.value] === 'photo') { togglePhoto(); return }
+    const item = closest()
+    if (item) { audio.beep(470); item.action(); return }
+    if (inventory.value[selectedInventorySlot.value] === 'shovel') dig()
+    else if (inventory.value[selectedInventorySlot.value] === 'rag') speak('ragUse')
+    else if (inventory.value[selectedInventorySlot.value] === 'treasure') speak('treasureUse')
+  }
   function dig() {
-    if (screen.value !== 'game' || dialog.value || choice.value || questState.value === 'tail' || location.value !== 'forest' || !shovel.value || shovelUsed.value) return
-    audio.beep(150, .12)
-    if (stage.value < 2 && stashState.value === 'witch') { speak('stashMissing'); return }
-    if (stage.value === 1 && Math.hypot(player.x-stashAt(stashIndex.value).x, player.y-stashAt(stashIndex.value).y) < 12) speak('stash', () => { stage.value = 2; stashState.value = 'player'; shovelUsed.value = true; drawScene() })
+    if (screen.value !== 'game' || dialog.value || choice.value || questState.value === 'tail' || location.value !== 'forest' || selectedInventorySlot.value !== 1 || !shovel.value || shovelUsed.value) return
+    audio.beep(150, .12); breakShovel()
+    if (stage.value < 2 && stashState.value === 'witch') { speak('stashMissing', null, true); return }
+    if (stage.value === 1 && Math.hypot(player.x-stashAt(stashIndex.value).x, player.y-stashAt(stashIndex.value).y) < 12)
+      speak('stash', () => { stage.value = 2; stashState.value = 'player'; drawScene() }, true)
     else if (stage.value === 1 && note.value) {
-      if (shovelPermission.value) { wrongDigs.value = Math.min(5, wrongDigs.value + 1); if (wrongDigs.value === 5) unlockAchievement('missed_digs'); save() }
-      dialog.value = { lines: [['ТИГРАН', 'Здесь пусто. Надо ещё раз свериться с фотографией.']], index: 0 }; keys.clear()
-    } else speak('empty')
+      if (shovelPermission.value) { wrongDigs.value = Math.min(5, wrongDigs.value + 1); if (wrongDigs.value === 5) unlockAchievement('missed_digs') }
+      dialog.value = { lines: [['ТИГРАН', 'Здесь пусто. Надо ещё раз свериться с фотографией.'], brokenLine], index: 0 }; keys.clear()
+    } else speak('empty', null, true)
   }
   function onKey(event) {
     const k = event.key.toLowerCase(), direction = directionFromEvent(event)
@@ -321,8 +348,7 @@ export function useGame() {
     if (screen.value === 'battle') { if (direction && !event.repeat) battle.attempt(direction); return }
     if (screen.value === 'slots') { if (k === 'escape') closeSlots(); return }
     if (screen.value === 'gallery' || screen.value === 'achievements') { if (k === 'escape') screen.value = 'title'; return }
-    if (photoOpen.value) { if (!event.repeat && ['f','а','escape'].includes(k)) photoOpen.value = false; return }
-    if (screen.value === 'game' && location.value === 'forest' && note.value && !dialog.value && !choice.value && !quiz.value && ['f','а'].includes(k) && !event.repeat) { togglePhoto(); return }
+    if (photoOpen.value) { if (!event.repeat && ['e','у','enter',' ','escape'].includes(k)) photoOpen.value = false; return }
     if (quiz.value) {
       if (event.repeat) return
       if (direction === 'up' || direction === 'down') quizSelected.value = (quizSelected.value + (direction === 'up' ? -1 : 1) + quizQuestion.value.options.length) % quizQuestion.value.options.length
@@ -338,7 +364,6 @@ export function useGame() {
     }
     if (screen.value === 'game' && !dialog.value && /^[1-6]$/.test(k) && !event.repeat) { selectInventorySlot(Number(k)-1); return }
     if ((event.code === 'KeyR' || ['r','к'].includes(k)) && !event.repeat) { dropItem(); return }
-    if (['q', 'й'].includes(k) && !event.repeat) { dig(); return }
     if (event.repeat && ['e', 'у', 'enter', ' '].includes(k)) return
     if (['e', 'у', 'enter', ' '].includes(k)) { if (screen.value === 'title') start(false); else if (screen.value === 'ending') screen.value = 'title'; else interact(); return }
     keys.add(k)
@@ -388,6 +413,7 @@ export function useGame() {
       }
     }
     if (droppedRag.value?.location === location.value) actors.push({ id:'dropped-rag', kind:'rag', ...droppedRag.value })
+    for (const [kind, point] of Object.entries(droppedItems.value)) if (point.location === location.value) actors.push({ id:`dropped-${kind}`, kind:`dropped-${kind}`, ...point })
     renderer.setActors(actors)
   }
   function update(ticker) {
@@ -413,11 +439,11 @@ export function useGame() {
     const cellX = Math.floor(player.x / 16) + 1, cellY = Math.floor(player.y / 16) + 1
     if (coords.value.x !== cellX || coords.value.y !== cellY) coords.value = { x: cellX, y: cellY }
     updateQuest(ticker.deltaMS)
-    near.value = closest()?.label || ''
+    near.value = inventory.value[selectedInventorySlot.value] === 'photo' ? '' : closest()?.label || ''
   }
   function press(key) { keys.add(key) }
   function release(key) { keys.delete(key) }
-  function togglePhoto() { if (location.value === 'forest' && note.value && !dialog.value && !choice.value && !quiz.value) { keys.clear(); photoOpen.value = !photoOpen.value } }
+  function togglePhoto() { if (note.value && !dialog.value && !choice.value && !quiz.value && (photoOpen.value || inventory.value[selectedInventorySlot.value] === 'photo')) { keys.clear(); photoOpen.value = !photoOpen.value } }
   const onBlur = () => keys.clear()
   onMounted(async () => {
     window.addEventListener('pointerdown', audio.unlockMusic); window.addEventListener('keydown', audio.unlockMusic); syncMusic()

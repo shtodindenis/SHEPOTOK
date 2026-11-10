@@ -129,6 +129,16 @@ export async function createWorld(host, onTick) {
         if (!image) { image = new Graphics().rect(-6, -4, 12, 8).fill(0x8aa9a0).rect(-5, -4, 10, 5).fill(0xd0e0d2).rect(-4, -3, 6, 1).fill(0xf2f0da); dynamicLayer.addChild(image); dynamicItems.set(item.id, image) }
         image.x = Math.round(item.x); image.y = Math.round(item.y); image.zIndex = item.y; continue
       }
+      if (item.kind?.startsWith('dropped-')) {
+        if (!image) {
+          image=new Graphics()
+          if (item.kind === 'dropped-shovel') image.rect(-1,-10,3,12).fill(0xa97949).rect(-4,1,9,5).fill(0xa9afa3)
+          else if (item.kind === 'dropped-photo') image.rect(-7,-5,14,10).fill(0xe8d7aa).rect(-4,-3,8,5).fill(0x829075)
+          else image.rect(-6,-7,12,13).fill(0x789653).rect(-4,-9,8,4).fill(0xc7b48b)
+          dynamicLayer.addChild(image); dynamicItems.set(item.id,image)
+        }
+        image.x=Math.round(item.x); image.y=Math.round(item.y); image.zIndex=item.y; continue
+      }
       const source = item.kind === 'chair' || item.kind === 'treasure' ? furniture : dungeon
       const texture = tileTexture(source, item.kind === 'chair' ? 19 : item.kind === 'treasure' ? 13 : (item.col ?? 0), item.kind === 'chair' ? 2 : item.kind === 'treasure' ? 7 : 7)
       if (!image) { image = new Sprite(texture); image.anchor.set(.5, .75); dynamicLayer.addChild(image); dynamicItems.set(item.id, image) }

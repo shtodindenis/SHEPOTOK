@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createCollision } from '../src/game/collision.js'
-import { FOREST_WIDTH, FOREST_HEIGHT, FOREST_ENTRY, FOREST_EAST, FOREST_SOLIDS, STASH_SPOTS, CAMP, forestRoad } from '../src/game/forestMap.js'
+import { FOREST_WIDTH, FOREST_HEIGHT, FOREST_ENTRY, FOREST_EAST, FOREST_SOLIDS, FOREST_PATHS, STASH_SPOTS, CAMP, forestRoad, nearRoute } from '../src/game/forestMap.js'
 import { createTail, updateTail } from '../src/game/societyQuest.js'
 
 test('all seven tree caches are off the road, distant and reachable', () => {
@@ -21,7 +21,7 @@ test('all seven tree caches are off the road, distant and reachable', () => {
   }
   assert.equal(STASH_SPOTS.length,7)
   for(const [index,spot] of STASH_SPOTS.entries()) {
-    assert.ok(!forestRoad(spot.x-8,spot.y-8),`cache ${index} is on a path`)
+    assert.ok(!FOREST_PATHS.some(path=>nearRoute(spot.x,spot.y,path,50)),`cache ${index} is too close to a path`)
     assert.ok(Math.hypot(spot.x-FOREST_ENTRY.x,spot.y-FOREST_ENTRY.y)>350)
     assert.ok(Math.hypot(spot.x-CAMP.x,spot.y-CAMP.y)>300)
     assert.ok(reachable(spot),`cache ${index} unreachable`)
@@ -39,4 +39,6 @@ test('all seven tree caches are off the road, distant and reachable', () => {
     assert.equal(result,'success'); assert.ok(tail.digging>=2600)
   }
   assert.ok(reachable(FOREST_EAST,20)); assert.ok(reachable(CAMP,30))
+  assert.ok(!FOREST_PATHS.some(path=>nearRoute(CAMP.x,CAMP.y,path,80)), 'camp is exposed by a path')
+  assert.ok(FOREST_SOLIDS.filter(tree=>Math.hypot(tree.x-CAMP.x,tree.y-CAMP.y)<115).length >= 8, 'camp needs a screen of trees')
 })

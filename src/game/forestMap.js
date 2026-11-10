@@ -3,8 +3,8 @@ export const FOREST_ENTRY = { x: 40, y: 224 }, FOREST_EAST = { x: 920, y: 224 }
 export const CAMP = { x: 192, y: 520 }
 // Each spot is below its own tree, well away from the entrance and camp.
 export const STASH_SPOTS = [
-  {x:560,y:425}, {x:630,y:503}, {x:700,y:425}, {x:770,y:503},
-  {x:840,y:425}, {x:680,y:555}, {x:820,y:555},
+  {x:572,y:405}, {x:630,y:540}, {x:700,y:405}, {x:770,y:540},
+  {x:840,y:405}, {x:680,y:570}, {x:820,y:570},
 ]
 export const STASH = STASH_SPOTS[0]
 export const stashAt = index => STASH_SPOTS[Number.isInteger(index) && index >= 0 && index < STASH_SPOTS.length ? index : 0]
@@ -14,13 +14,11 @@ export const MAIN_TRAIL = [
   {x:704,y:224},{x:960,y:224},
 ]
 export const CACHE_TRAIL = [{x:512,y:352},{x:512,y:464},{x:850,y:464}]
-export const CAMP_TRAIL = [{x:160,y:320},{x:160,y:440},{x:192,y:520}]
 export const SIDE_TRAILS = [
   [{x:336,y:208},{x:365,y:160},{x:415,y:145}],
   [{x:704,y:224},{x:750,y:190},{x:802,y:192}],
-  [{x:680,y:464},{x:680,y:520}], [{x:820,y:464},{x:820,y:520}],
 ]
-export const FOREST_PATHS = [MAIN_TRAIL,CACHE_TRAIL,CAMP_TRAIL,...SIDE_TRAILS]
+export const FOREST_PATHS = [MAIN_TRAIL,CACHE_TRAIL,...SIDE_TRAILS]
 export function nearRoute(x, y, points, radius) {
   return points.slice(1).some((b, i) => {
     const a = points[i], dx = b.x-a.x, dy = b.y-a.y
@@ -32,8 +30,8 @@ export function forestRoad(x, y) { return FOREST_PATHS.some((path,i) => nearRout
 export const forestTrees = []
 for (let row=0;row<16;row++) for(let col=0;col<24;col++) {
   const x=18+col*40+(row%2)*13+((row*17+col*11)%13)-6, y=40+row*38+(col%3)*3+((row*7+col*13)%11)-5
-  const safe=FOREST_PATHS.some((path,i)=>nearRoute(x,y,path,i===0?37:31))
-  const clearing=Math.hypot(x-CAMP.x,y-CAMP.y)<75 || STASH_SPOTS.some(p=>Math.hypot(x-p.x,y-p.y)<35)
+  const safe=FOREST_PATHS.some((path,i)=>nearRoute(x,y,path,i===0?37:31)) || STASH_SPOTS.some(p=>nearRoute(x,y,[{x:p.x,y:464},p],24))
+  const clearing=Math.hypot(x-CAMP.x,y-CAMP.y)<45 || STASH_SPOTS.some(p=>Math.hypot(x-p.x,y-p.y)<35)
   if (!safe && !clearing && (col*7+row*11)%8!==0 && x<945 && y<630) {
     const n=col*7+row*11
     forestTrees.push({x:x-8,y:y-32,scale:[1.65,1.9,2.1,1.8][n%4],tint:[0xffffff,0xcde9c5,0xe0e8bf,0xb9d9bd][n%4],col:n%5===0?3:4,flip:n%3===0})
