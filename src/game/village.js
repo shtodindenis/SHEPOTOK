@@ -18,7 +18,9 @@ export const VILLAGE_TREES = TREE_POSITIONS.map(([x,y], i) => ({
   x:x+8, y:y+32, scale:[1.82, 2, 2.18, 2, 1.9, 2.08][i % 6],
   tint:[0xffffff, 0xd9f1d2, 0xebf1d3, 0xd4e9d5][i % 4], flip:i % 3 === 1, pattern:i % 3,
 }))
+export const VILLAGE_MUSHROOMS = [[225,175],[236,133],[485,192],[722,227],[1000,350],[267,492],[497,480],[740,435]]
 export const VILLAGE_SOLIDS = [
+  ...VILLAGE_MUSHROOMS.map(([x,y])=>({x:x+2,y:y+10,w:12,h:5})),
   ...HOUSES.map(h => ({x:h.x,y:h.y+6,w:48*(h.scale || 1.5),h:48*(h.scale || 1.5)-6})),
   ...VILLAGE_TREES.map(({x,y,scale}) => ({x:x-3.5*scale,y:y-10*scale,w:7*scale,h:8*scale})),
   {x:130,y:175,w:43,h:17},
@@ -101,7 +103,7 @@ export function buildVillage({world, sprite, sheet, dungeon, collision, depthGro
   depthGroup(VILLAGE.neighbor.y+4, () => sprite(dungeon,VILLAGE.neighbor.x-8,VILLAGE.neighbor.y-15,2,8,1,false))
   depthGroup(VILLAGE.sign.y, () => sprite(sheet,VILLAGE.sign.x-8,VILLAGE.sign.y-17,11,6,1,false))
   // Trees and gardens are placed away from main routes and doorsteps.
-  for(const [x,y] of [[225,175],[236,133],[485,192],[722,227],[1000,350],[267,492],[497,480],[740,435]])
+  for(const [x,y] of VILLAGE_MUSHROOMS)
     depthGroup(y+16, () => sprite(sheet,x,y,5,2,1,false))
   for(const tree of VILLAGE_TREES) {
     const {x,y,scale,tint,flip,pattern} = tree

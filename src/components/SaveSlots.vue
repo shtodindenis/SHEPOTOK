@@ -4,7 +4,7 @@ const props = defineProps({ mode: String, slots: Array, fromGame: Boolean, check
 const emit = defineEmits(['choose', 'back'])
 const confirm = ref(-1)
 watch(() => props.mode, () => { confirm.value = -1 })
-const places = {home:'Дом Тиграна',village:'Деревня',hut:'Дом гадалки',forest:'Лес',society:'Общество',mansion:'Особняк'}
+const places = {home:'Дом Тиграна',village:'Деревня',hut:'Дом гадалки',forest:'Лес',river:'Река',society:'Общество',mansion:'Особняк'}
 function date(value) { return new Date(value).toLocaleString('ru-RU', { day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit' }) }
 function description(save) {
   const q=save.questState

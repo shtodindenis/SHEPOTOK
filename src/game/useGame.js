@@ -1,4 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { startFishing, updateFishing, hookFish } from './fishing.js'
+import { RIVER_ENTRY, RIVER_ROD, RIVER_FISHER, canFishAtRiver } from './river.js'
 import { reconcileInventory } from './inventory.js'
 import { createAudio } from './audio.js'
 import { getBikeHint, getQuestHint } from './hints.js'
@@ -9,7 +11,7 @@ import { achievements } from './achievements.js'
 import { QUIZ_TIME_MS, quizQuestions, quizResult, validQuiz } from './wellQuiz.js'
 import { VILLAGE, OTHER_DOORS } from './village.js'
 import { createWorld } from './world.js'
-import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_MUSHROOMS } from './forestMap.js'
+import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_MUSHROOMS, RIVER_PATH_ENTRY } from './forestMap.js'
 import { QUEST_STATES, SEATS, advanceChairs, createChairs, createTail, inShadow, sitDown, updateTail } from './societyQuest.js'
 import { MANSION_ENTRY, MANSION_CHAIR, createMansionPatrol, advanceMansionPatrol } from './mansionLayout.js'
 
@@ -24,9 +26,9 @@ export function useGame() {
   const quiz = ref(null), quizSelected = ref(0), achievementUnlocked = ref(readAchievements()), achievementToast = ref(null)
   const photoOpen = ref(false), photo = ref('')
   const ragTaken = ref(false), bikeQuest = ref(false), bikeClean = ref(false), selectedInventorySlot = ref(-1)
-  const droppedRag = ref(null), droppedItems = ref({})
+  const droppedRag = ref(null), droppedItems = ref({}), rodTaken = ref(false), fishing = ref(null)
   const inventory = ref(Array(6).fill(null))
-  const ownedItems = computed(() => [ragTaken.value ? 'rag' : null, shovel.value && !shovelUsed.value && !droppedItems.value.shovel ? 'shovel' : null, note.value && !droppedItems.value.photo ? 'photo' : null, stashState.value === 'player' && !droppedItems.value.treasure ? 'treasure' : null].filter(Boolean))
+  const ownedItems = computed(() => [ragTaken.value ? 'rag' : null, shovel.value && !shovelUsed.value && !droppedItems.value.shovel ? 'shovel' : null, note.value && !droppedItems.value.photo ? 'photo' : null, stashState.value === 'player' && !droppedItems.value.treasure ? 'treasure' : null, rodTaken.value && !droppedItems.value.rod ? 'rod' : null].filter(Boolean))
   watch(ownedItems, items => {
     const selected=inventory.value[selectedInventorySlot.value]
     inventory.value=reconcileInventory(inventory.value,items)
@@ -62,7 +64,7 @@ export function useGame() {
     () => { unlockAchievement('wolf_loss'); screen.value = 'game'; audio.beep(110, .2); speak('wolfFail', () => finishEnding('wolf'), true) },
   )
 
-  function snapshot() { return { location: location.value, stage: stage.value, stashIndex: stashIndex.value, note: note.value, shovel: shovel.value, trip: trip.value, mushroomUsed: mushroomUsed.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, carriedChair, ragTaken: ragTaken.value || !!droppedRag.value, bikeClean: bikeClean.value } }
+  function snapshot() { return { location: location.value, stage: stage.value, stashIndex: stashIndex.value, note: note.value, shovel: shovel.value, trip: trip.value, mushroomUsed: mushroomUsed.value, rodTaken: rodTaken.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, carriedChair, ragTaken: ragTaken.value || !!droppedRag.value, bikeClean: bikeClean.value } }
   function drawScene() {
     if (!renderer) return
     if (note.value && !photo.value && location.value !== 'forest') {
@@ -73,7 +75,7 @@ export function useGame() {
     if (location.value === 'forest') photo.value = renderer.forestPhoto()
     near.value = ''
   }
-  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, mushroomUsed: mushroomUsed.value, wolfDefeated: wolfDefeated.value, inventorySlots: inventory.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 5, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, droppedItems: droppedItems.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
+  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, mushroomUsed: mushroomUsed.value, wolfDefeated: wolfDefeated.value, inventorySlots: inventory.value, rodTaken: rodTaken.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 5, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, droppedItems: droppedItems.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
   function save() { writeSave(saveData()) }
   function unlockEnding(id) {
     if (!unlocked.value.includes(id)) unlocked.value = [...unlocked.value, id]
@@ -105,7 +107,20 @@ export function useGame() {
   }
   function chooseWell(dive) {
     choice.value = false; keys.clear()
+    if (dive === 'fish') { fishing.value=startFishing('well'); return }
     if (dive) beginDive('jump')
+  }
+  function castRod() {
+    if (fishing.value) return
+    if (location.value !== 'river' || !canFishAtRiver(player)) { speak('rodNeedWater'); return }
+    fishing.value=startFishing('river', 3000+Math.random()*2200); keys.clear()
+  }
+  function retrieveRod() { if (!fishing.value) return; fishing.value=null; keys.clear() }
+  function fishingPress(held) {
+    const f=fishing.value
+    if (!f || f.kind !== 'river') return
+    if (held && f.phase === 'bite') hookFish(f)
+    f.holding=held && f.phase==='reeling'
   }
   function beginDive(cause) {
     pendingDiver.value = cause; diveCause = cause; quiz.value = null; choice.value = false; dialog.value = null; keys.clear()
@@ -125,7 +140,7 @@ export function useGame() {
   }
   function start(restore = false, slotSave = null) {
     const saved = slotSave || (restore ? readSave() : null)
-    dialog.value = null; choice.value = false; photoOpen.value = false; photo.value = ''; quiz.value = null; pendingDiver.value = ''; battle.stop(); endingKind.value = 'healed'; keys.clear(); tail = null; chairGame = null; carriedChair = false
+    dialog.value = null; choice.value = false; fishing.value = null; photoOpen.value = false; photo.value = ''; quiz.value = null; pendingDiver.value = ''; battle.stop(); endingKind.value = 'healed'; keys.clear(); tail = null; chairGame = null; carriedChair = false
     if (saved) {
       stashIndex.value = Number.isInteger(saved.stashIndex) && saved.stashIndex >= 0 && saved.stashIndex < STASH_SPOTS.length ? saved.stashIndex : 0
       stage.value = saved.stage; location.value = saved.location; player.x = saved.player.x; player.y = saved.player.y
@@ -135,11 +150,11 @@ export function useGame() {
       }
       if (saved.location === 'hut' && saved.hutVersion !== 2) { player.x = 75; player.y = 169 }
       if (saved.location === 'home' && saved.homeVersion !== 1) { player.x = 256; player.y = 270 }
-      droppedRag.value = saved.droppedRag && ['home','village','hut','forest','society','mansion'].includes(saved.droppedRag.location) && Number.isFinite(saved.droppedRag.x) && Number.isFinite(saved.droppedRag.y) ? { ...saved.droppedRag } : null
-      droppedItems.value = Object.fromEntries(Object.entries(saved.droppedItems || {}).filter(([kind,p]) => ['shovel','photo','treasure'].includes(kind) && p && ['home','village','hut','forest','society','mansion'].includes(p.location) && Number.isFinite(p.x) && Number.isFinite(p.y)))
+      droppedRag.value = saved.droppedRag && ['home','village','hut','forest','river','society','mansion'].includes(saved.droppedRag.location) && Number.isFinite(saved.droppedRag.x) && Number.isFinite(saved.droppedRag.y) ? { ...saved.droppedRag } : null
+      droppedItems.value = Object.fromEntries(Object.entries(saved.droppedItems || {}).filter(([kind,p]) => ['shovel','photo','treasure','rod'].includes(kind) && p && ['home','village','hut','forest','river','society','mansion'].includes(p.location) && Number.isFinite(p.x) && Number.isFinite(p.y)))
       ragTaken.value = !!saved.ragTaken && !droppedRag.value; bikeQuest.value = !!saved.bikeQuest; bikeClean.value = !!saved.bikeClean
       selectedInventorySlot.value = Number.isInteger(saved.selectedInventorySlot) && saved.selectedInventorySlot >= 0 && saved.selectedInventorySlot < 6 ? saved.selectedInventorySlot : -1
-      shovel.value = !!saved.shovel; shovelUsed.value = saved.shovelUsed; note.value = !!saved.note; trip.value = !!saved.trip; wolfDefeated.value = saved.wolfDefeated; mushroomUsed.value = typeof saved.mushroomUsed === 'boolean' ? saved.mushroomUsed : trip.value || wolfDefeated.value
+      rodTaken.value = !!saved.rodTaken; shovel.value = !!saved.shovel; shovelUsed.value = saved.shovelUsed; note.value = !!saved.note; trip.value = !!saved.trip; wolfDefeated.value = saved.wolfDefeated; mushroomUsed.value = typeof saved.mushroomUsed === 'boolean' ? saved.mushroomUsed : trip.value || wolfDefeated.value
       societyProgress.value = Number.isInteger(saved.societyProgress) ? Math.max(0, Math.min(3, saved.societyProgress)) : 0
       shovelPermission.value = typeof saved.shovelPermission === 'boolean' ? saved.shovelPermission : saved.stage >= 1
       // In older saves a stage-zero shovel could only have been taken before asking.
@@ -164,7 +179,7 @@ export function useGame() {
       if (societyProgress.value === 3 || questState.value === 'done') unlockAchievement('throne', false)
       if (trip.value) unlockAchievement('trip', false)
     } else {
-      droppedRag.value = null; droppedItems.value = {}; ragTaken.value = false; bikeQuest.value = false; bikeClean.value = false; selectedInventorySlot.value = -1
+      droppedRag.value = null; droppedItems.value = {}; rodTaken.value = false; ragTaken.value = false; bikeQuest.value = false; bikeClean.value = false; selectedInventorySlot.value = -1
       stage.value = 0; location.value = 'home'; player.x = 145; player.y = 110; shovel.value = false; shovelUsed.value = false; note.value = false; trip.value = false; mushroomUsed.value = false; wolfDefeated.value = false
       societyProgress.value = 0
       questState.value = 'none'
@@ -195,6 +210,7 @@ export function useGame() {
     }
   }
   function openMenu() {
+    fishing.value = null
     if (questState.value === 'tail') { questState.value = 'tail_ready'; location.value = 'forest'; player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y; tail = null }
     if (questState.value === 'heist') { questState.value = 'heist_ready'; location.value = 'village'; player.x = VILLAGE.mansion.x; player.y = VILLAGE.mansion.y; carriedChair = false }
     if (questState.value === 'chairs') { questState.value = 'report2'; location.value = 'society'; player.x = 160; player.y = 151; chairGame = null }
@@ -202,6 +218,7 @@ export function useGame() {
   }
   function transition(dest, x, y) {
     const origin = location.value
+    fishing.value = null
     location.value = dest; photoOpen.value = false; player.x = x; player.y = y; drawScene(); save(); audio.beep(200, .1)
     if (origin === 'society' && dest === 'forest' && questState.value === 'tail_ready') startTail()
   }
@@ -239,10 +256,11 @@ export function useGame() {
     } else if (result === 'next') { syncMusic(); save() }
   }
   function selectInventorySlot(index) {
-    if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || index < 0 || index >= 6) return
+    if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || fishing.value || index < 0 || index >= 6) return
     selectedInventorySlot.value = selectedInventorySlot.value === index ? -1 : index; save()
   }
   function dropItem() {
+    if (fishing.value) { retrieveRod(); return }
     if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || !renderer) return
     const kind=inventory.value[selectedInventorySlot.value]
     if (!kind) return
@@ -304,7 +322,13 @@ export function useGame() {
       } }] : []),
       ...(!note.value ? [{ x: 281, y: 69, label: 'ВЗЯТЬ ФОТОГРАФИЮ', action: () => speak('note', () => { note.value = true; if (witchAngry.value && stage.value === 0) stage.value = 1; drawScene() }) }] : []),
     ]
+    if (location.value === 'river') return [
+      { ...RIVER_ENTRY,label:'ВЕРНУТЬСЯ В ЛЕС',action:()=>transition('forest',RIVER_PATH_ENTRY.x,RIVER_PATH_ENTRY.y-20) },
+      { ...RIVER_FISHER,label:'ПОГОВОРИТЬ С РЫБАКОМ',action:()=>speak('fisherman') },
+      ...(!rodTaken.value ? [{...RIVER_ROD,label:'ВЗЯТЬ УДОЧКУ',action:()=>{rodTaken.value=true;drawScene();save();speak('rodTake')}}] : []),
+    ]
     if (location.value === 'forest') return [
+      ...(!trip.value && questState.value !== 'tail' ? [{...RIVER_PATH_ENTRY,label:'ПЕРЕЙТИ К РЕКЕ',action:()=>transition('river',RIVER_ENTRY.x,RIVER_ENTRY.y+12)}] : []),
       { x: 18, y: 224, label: 'ВЫЙТИ ИЗ ЛЕСА', action: () => trip.value ? speak('freedom', () => finishEnding('freedom')) : transition('village', VILLAGE.forest.x-10, VILLAGE.forest.y) },
       { x: 92, y: 207, label: 'ПРОЧИТАТЬ УКАЗАТЕЛЬ', action: () => speak('forestSign') },
       ...(questState.value === 'tail_ready' ? [{ x: FOREST_EAST.x-30, y: FOREST_EAST.y, label: 'НАЧАТЬ СЛЕЖКУ ЗА БАБКОЙ', action: startTail }] : []),
@@ -329,9 +353,9 @@ export function useGame() {
       ...OTHER_DOORS.map(door => ({ ...door, label:'ОСМОТРЕТЬ ДОМ', action: () => speak('villageHouse') })),
     ]
   }
-  function closest() { const dropped = droppedRag.value?.location === location.value ? [{ ...droppedRag.value, label:'ПОДНЯТЬ ТРЯПКУ', action: () => { droppedRag.value = null; ragTaken.value = true; selectedInventorySlot.value = inventory.value.indexOf('rag'); drawScene(); save() } }] : []; for (const [kind, point] of Object.entries(droppedItems.value)) if (point.location === location.value) dropped.push({ ...point, label: ({shovel:'ПОДНЯТЬ ЛОПАТУ',photo:'ПОДНЯТЬ ФОТОГРАФИЮ',treasure:'ПОДНЯТЬ КЛАД'})[kind], action: () => { const next={...droppedItems.value}; delete next[kind]; droppedItems.value=next; selectedInventorySlot.value=inventory.value.indexOf(kind); drawScene(); save() } }); return [...dropped, ...interactables()].map(o => ({ ...o, d: Math.hypot(player.x - o.x, player.y - o.y) })).filter(o => o.d < 25).sort((a, b) => a.d - b.d)[0] }
+  function closest() { const dropped = droppedRag.value?.location === location.value ? [{ ...droppedRag.value, label:'ПОДНЯТЬ ТРЯПКУ', action: () => { droppedRag.value = null; ragTaken.value = true; selectedInventorySlot.value = inventory.value.indexOf('rag'); drawScene(); save() } }] : []; for (const [kind, point] of Object.entries(droppedItems.value)) if (point.location === location.value) dropped.push({ ...point, label: ({shovel:'ПОДНЯТЬ ЛОПАТУ',photo:'ПОДНЯТЬ ФОТОГРАФИЮ',treasure:'ПОДНЯТЬ КЛАД',rod:'ПОДНЯТЬ УДОЧКУ'})[kind], action: () => { const next={...droppedItems.value}; delete next[kind]; droppedItems.value=next; selectedInventorySlot.value=inventory.value.indexOf(kind); drawScene(); save() } }); return [...dropped, ...interactables()].map(o => ({ ...o, d: Math.hypot(player.x - o.x, player.y - o.y) })).filter(o => o.d < 25).sort((a, b) => a.d - b.d)[0] }
   function interact() {
-    if (screen.value !== 'game' || choice.value || quiz.value || photoOpen.value) return
+    if (screen.value !== 'game' || choice.value || quiz.value || photoOpen.value || fishing.value) return
     if (dialog.value) { nextDialog(); return }
     const item=closest()
     if (item) { audio.beep(470); item.action() }
@@ -343,6 +367,7 @@ export function useGame() {
     else if (item === 'shovel') dig()
     else if (item === 'rag') speak('ragUse')
     else if (item === 'treasure') speak('treasureUse')
+    else if (item === 'rod') castRod()
   }
   function dig() {
     if (screen.value !== 'game' || dialog.value || choice.value || questState.value === 'tail' || location.value !== 'forest' || inventory.value[selectedInventorySlot.value] !== 'shovel' || !shovel.value || shovelUsed.value) return
@@ -362,6 +387,11 @@ export function useGame() {
     if (screen.value === 'battle') { if (direction && !event.repeat) battle.attempt(direction); return }
     if (screen.value === 'slots') { if (k === 'escape') closeSlots(); return }
     if (screen.value === 'gallery' || screen.value === 'achievements') { if (k === 'escape') screen.value = 'title'; return }
+    if (fishing.value) {
+      if ((event.code==='KeyR' || ['r','к'].includes(k)) && !event.repeat) retrieveRod()
+      else if (event.code==='Space' && !event.repeat) fishingPress(true)
+      return
+    }
     if (photoOpen.value) { if (!event.repeat && ['q','й','escape'].includes(k)) photoOpen.value = false; return }
     if (quiz.value) {
       if (event.repeat) return
@@ -371,8 +401,8 @@ export function useGame() {
       return
     }
     if (choice.value) {
-      if (['up', 'down'].includes(direction)) choiceIndex.value = 1 - choiceIndex.value
-      else if (['enter', ' ', 'e', 'у'].includes(k) && !event.repeat) chooseWell(choiceIndex.value === 0)
+      if (['up', 'down'].includes(direction)) choiceIndex.value = (choiceIndex.value + (direction === 'up' ? -1 : 1) + (inventory.value.includes('rod') ? 3 : 2)) % (inventory.value.includes('rod') ? 3 : 2)
+      else if (['enter', ' ', 'e', 'у'].includes(k) && !event.repeat) chooseWell(choiceIndex.value === 0 ? true : choiceIndex.value === 1 ? false : 'fish')
       else if (k === 'escape') chooseWell(false)
       return
     }
@@ -383,7 +413,10 @@ export function useGame() {
     if (['e', 'у', 'enter', ' '].includes(k)) { if (screen.value === 'title') start(false); else if (screen.value === 'ending') screen.value = 'title'; else interact(); return }
     keys.add(k)
   }
-  function onUp(event) { keys.delete(event.key.toLowerCase()) }
+  function onUp(event) { keys.delete(event.key.toLowerCase()); if (event.code==='Space') fishingPress(false) }
+  function onMouseDown(event) { if (event.button===2 && fishing.value) { event.preventDefault(); fishingPress(true) } }
+  function onMouseUp(event) { if (event.button===2) fishingPress(false) }
+  function onContextMenu(event) { if (fishing.value) event.preventDefault() }
   function updateQuest(delta) {
     const actors = []
     if (questState.value === 'tail' && tail && location.value === 'forest') {
@@ -427,8 +460,13 @@ export function useGame() {
         actors.push({ id:`npc${i}`, x:start.x+(seat.x-start.x)*t, y:start.y+(seat.y-start.y)*t, col:2+i })
       }
     }
+    if (fishing.value) {
+      const f=fishing.value, point=f.kind==='well' ? {x:VILLAGE.well.x,y:VILLAGE.well.y+3} : {x:player.x+6,y:278}
+      actors.push({id:'bobber',kind:'bobber',...point,fromX:player.x,fromY:player.y,biting:f.phase==='bite',time:f.elapsed})
+    }
     if (droppedRag.value?.location === location.value) actors.push({ id:'dropped-rag', kind:'rag', ...droppedRag.value })
     for (const [kind, point] of Object.entries(droppedItems.value)) if (point.location === location.value) actors.push({ id:`dropped-${kind}`, kind:`dropped-${kind}`, ...point })
+    renderer.setFishingPose(!!fishing.value)
     renderer.setActors(actors)
   }
   function update(ticker) {
@@ -448,6 +486,14 @@ export function useGame() {
       return
     }
     if (screen.value !== 'game' || dialog.value || choice.value || photoOpen.value || !renderer) return
+    if (fishing.value) {
+      const outcome=updateFishing(fishing.value,ticker.deltaMS)
+      if (outcome==='well-fall') { fishing.value=null; speak('wellFishingScold',()=>beginDive('thrown')) }
+      else if (outcome==='caught' || outcome==='escaped' || outcome==='missed') {
+        fishing.value=null; speak(outcome==='caught'?'fishCaught':outcome==='missed'?'fishMissed':'fishEscaped')
+      }
+      updateQuest(ticker.deltaMS); return
+    }
     const left = keys.has('a') || keys.has('ф') || keys.has('arrowleft'), right = keys.has('d') || keys.has('в') || keys.has('arrowright'), up = keys.has('w') || keys.has('ц') || keys.has('arrowup'), down = keys.has('s') || keys.has('ы') || keys.has('arrowdown')
     let dx = Number(right) - Number(left), dy = Number(down) - Number(up); const length = Math.hypot(dx, dy) || 1, speed = Math.min(ticker.deltaTime, 2) * 1.05
     dx = dx / length * speed; dy = dy / length * speed; elapsed += ticker.deltaTime; renderer.move(player, dx, dy, elapsed, left)
@@ -459,9 +505,9 @@ export function useGame() {
   function press(key) { keys.add(key) }
   function release(key) { keys.delete(key) }
   function togglePhoto() { if (note.value && !dialog.value && !choice.value && !quiz.value && (photoOpen.value || inventory.value[selectedInventorySlot.value] === 'photo')) { keys.clear(); photoOpen.value = !photoOpen.value } }
-  const onBlur = () => keys.clear()
+  const onBlur = () => { keys.clear(); fishingPress(false) }
   onMounted(async () => {
-    window.addEventListener('pointerdown', audio.unlockMusic); window.addEventListener('keydown', audio.unlockMusic); syncMusic()
+    window.addEventListener('mousedown', onMouseDown); window.addEventListener('mouseup', onMouseUp); window.addEventListener('contextmenu', onContextMenu); window.addEventListener('pointerdown', audio.unlockMusic); window.addEventListener('keydown', audio.unlockMusic); syncMusic()
     const created = await createWorld(canvasHost.value, update)
     if (disposed) { created.destroy(); return }
     renderer = created; drawScene()
@@ -470,7 +516,7 @@ export function useGame() {
   onUnmounted(() => {
     disposed = true; clearTimeout(curseTimer); clearTimeout(achievementTimer); battle.stop(); audio.destroy(); renderer?.destroy()
     window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur)
-    window.removeEventListener('pointerdown', audio.unlockMusic); window.removeEventListener('keydown', audio.unlockMusic)
+    window.removeEventListener('mousedown', onMouseDown); window.removeEventListener('mouseup', onMouseUp); window.removeEventListener('contextmenu', onContextMenu); window.removeEventListener('pointerdown', audio.unlockMusic); window.removeEventListener('keydown', audio.unlockMusic)
   })
-  return { canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, photo, photoOpen, togglePhoto, useItem, trip, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle }
+  return { canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle }
 }

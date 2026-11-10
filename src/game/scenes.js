@@ -45,8 +45,9 @@ function buildForest() {
     }
     ground.stroke({width,color,cap:'round',join:'round'})
   }
-  for(const [i,path] of FOREST_PATHS.entries()) road(path,i===0?40:29,0x8c724c)
-  for(const [i,path] of FOREST_PATHS.entries()) road(path,i===0?32:21,0xb8996b)
+  const paths=FOREST_PATHS.map((path,i)=>i===0 && !scene.trip && !scene.wolfDefeated ? [...path.slice(0,-1),{x:865,y:224}] : path)
+  for(const [i,path] of paths.entries()) road(path,i===0?40:29,0x8c724c)
+  for(const [i,path] of paths.entries()) road(path,i===0?32:21,0xb8996b)
   world.addChild(ground)
   const detail=new Graphics()
   for(let y=20;y<mapHeight-15;y+=19) for(let x=15;x<mapWidth-10;x+=25) {
@@ -71,6 +72,12 @@ function buildForest() {
     })
   }
   for(const rect of FOREST_SOLIDS) collision.addRect(rect)
+  if (!scene.trip && !scene.wolfDefeated) for(const [x,y] of [[905,198],[930,222],[954,197],[950,248]]) {
+    const scale=2, left=x-16, top=y-64
+    world.addChild(new Graphics().ellipse(x,y-4,24,7).fill({color:0x314d34,alpha:.24}))
+    depthGroup(y-4,()=>{ sprite(sheet,left,top,4,0,scale,false); sprite(sheet,left,top+32,4,1,scale,false) })
+    collision.addRect({x:x-7,y:y-20,w:14,h:16})
+  }
   // Shadows and small footprints make the props solid without blocking whole trails.
   for(const [kind,objects] of [['mushroom',FOREST_MUSHROOMS],['log',FOREST_LOGS]]) for(const {x,y} of objects) {
     world.addChild(new Graphics().ellipse(x+8,y+14,8,3).fill({color:0x304a32,alpha:.25}))

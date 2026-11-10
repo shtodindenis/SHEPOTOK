@@ -1,10 +1,11 @@
 export const FOREST_WIDTH = 960, FOREST_HEIGHT = 640
 export const FOREST_ENTRY = { x: 40, y: 224 }, FOREST_EAST = { x: 920, y: 224 }
+export const RIVER_PATH_ENTRY = {x:880,y:604}
 export const CAMP = { x: 192, y: 520 }
 // Each spot is below its own tree, well away from the entrance and camp.
 export const STASH_SPOTS = [
   {x:572,y:405}, {x:630,y:540}, {x:700,y:405}, {x:770,y:540},
-  {x:840,y:405}, {x:680,y:570}, {x:820,y:570},
+  {x:798,y:405}, {x:680,y:570}, {x:820,y:570},
 ]
 export const STASH = STASH_SPOTS[0]
 export const stashAt = index => STASH_SPOTS[Number.isInteger(index) && index >= 0 && index < STASH_SPOTS.length ? index : 0]
@@ -14,7 +15,9 @@ export const MAIN_TRAIL = [
   {x:704,y:224},{x:960,y:224},
 ]
 export const CACHE_TRAIL = [{x:512,y:352},{x:512,y:464},{x:850,y:464}]
+export const RIVER_TRAIL = [{x:840,y:224},{x:880,y:270},{x:880,y:604}]
 export const SIDE_TRAILS = [
+  RIVER_TRAIL,
   [{x:336,y:208},{x:365,y:160},{x:415,y:145}],
   [{x:704,y:224},{x:750,y:190},{x:802,y:192}],
 ]

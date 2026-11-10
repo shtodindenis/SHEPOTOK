@@ -7,7 +7,7 @@ const ACHIEVEMENTS_KEY = 'shepotok-achievements'
 
 function validateSave(data) {
     if (!data || !Number.isInteger(data.stage) || data.stage < 0 || data.stage >= 4 ||
-        !['home', 'village', 'hut', 'forest', 'society', 'mansion'].includes(data.location) ||
+        !['home', 'village', 'hut', 'forest', 'river', 'society', 'mansion'].includes(data.location) ||
         !Number.isFinite(data.player?.x) || !Number.isFinite(data.player?.y)) return null
     return {
       ...data,

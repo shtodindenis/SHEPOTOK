@@ -2,6 +2,7 @@ import { Application, Assets, Container, Graphics, Rectangle, Sprite, Texture } 
 import { VILLAGE_WIDTH, VILLAGE_HEIGHT, VILLAGE, buildVillage, addVillageSunlight } from './village.js'
 import { HOME_WIDTH, HOME_HEIGHT, buildHome, addHomeLighting } from './home.js'
 import { HUT_WIDTH, HUT_HEIGHT, HUT_SCALE, buildHut, addHutLighting } from './hut.js'
+import { RIVER_WIDTH, RIVER_HEIGHT, buildRiver } from './river.js'
 import { createCollision } from './collision.js'
 import { buildScene } from './scenes.js'
 import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSION_CHAIR } from './mansionLayout.js'
@@ -65,6 +66,8 @@ export async function createWorld(host, onTick) {
   }
   function bounds() {
     const outside = scene.location === 'village' || scene.location === 'forest'
+    if (scene.location === 'forest') return { minX:10, maxX:scene.trip || scene.wolfDefeated ? FOREST_WIDTH-10 : 895, minY:35, maxY:FOREST_HEIGHT-14 }
+    if (scene.location === 'river') return { minX:10, maxX:RIVER_WIDTH-10, minY:20, maxY:255 }
     if (scene.location === 'village') return { minX:10, maxX:VILLAGE_WIDTH-10, minY:40, maxY:VILLAGE_HEIGHT-14 }
     if (scene.location === 'hut') return { minX:16, maxX:304, minY:27, maxY:183 }
     if (scene.location === 'home') return { minX:25, maxX:487, minY:42, maxY:294 }
@@ -72,19 +75,20 @@ export async function createWorld(host, onTick) {
     return { minX: outside ? 10 : 25, maxX: outside ? mapWidth - 10 : 295, minY: scene.location === 'forest' ? 35 : outside ? 87 : 58, maxY: outside ? mapHeight - 14 : 169 }
   }
   function updateCamera(player) {
-    const scroll = scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
+    const scroll = scene.location === 'river' || scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
     const x = scroll ? Math.max(0, Math.min(mapWidth - VIEW_WIDTH, player.x - VIEW_WIDTH / 2)) : 0
     const y = scroll ? Math.max(0, Math.min(mapHeight - VIEW_HEIGHT, player.y - VIEW_HEIGHT / 2)) : 0
     world.position.set(-Math.round(x), -Math.round(y))
   }
   function draw(newScene, player) {
     scene = newScene
-    mapWidth = scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
-    mapHeight = scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
+    mapWidth = scene.location === 'river' ? RIVER_WIDTH : scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
+    mapHeight = scene.location === 'river' ? RIVER_HEIGHT : scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
     collision = createCollision(mapWidth, mapHeight)
     runningTrees = []
     for (const child of world.removeChildren()) child.destroy({ children: true })
-    if (scene.location === 'village') buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene})
+    if (scene.location === 'river') buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene})
+    else if (scene.location === 'village') buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene})
     else if (scene.location === 'hut') {
       const room = new Container(); room.scale.set(HUT_SCALE); room.sortableChildren = true; world.addChild(room)
       const hutSprite = (...args) => { const item = sprite(...args); room.addChild(item); return item }
@@ -125,6 +129,12 @@ export async function createWorld(host, onTick) {
     for (const [id, sprite] of dynamicItems) if (!ids.has(id)) { dynamicLayer.removeChild(sprite); sprite.destroy(); dynamicItems.delete(id) }
     for (const item of items) {
       let image = dynamicItems.get(item.id)
+      if (item.kind === 'bobber') {
+        if (!image) { image=new Graphics();dynamicLayer.addChild(image);dynamicItems.set(item.id,image) }
+        image.clear().moveTo(item.fromX-item.x,item.fromY-item.y-8).lineTo(0,0).stroke({width:1,color:0xd8d4ad,alpha:.7})
+        image.ellipse(0,2,5,2).stroke({width:1,color:0xb5e7dc,alpha:.6}).rect(-2,-5,4,7).fill(0xf0e7d1).rect(-2,-5,4,3).fill(0xd64c3c)
+        image.x=item.x;image.y=item.y+(item.biting ? Math.sin(item.time*.018)*3+4 : Math.sin(item.time*.004));image.zIndex=900;continue
+      }
       if (item.kind === 'rag') {
         if (!image) { image = new Graphics().rect(-6, -4, 12, 8).fill(0x8aa9a0).rect(-5, -4, 10, 5).fill(0xd0e0d2).rect(-4, -3, 6, 1).fill(0xf2f0da); dynamicLayer.addChild(image); dynamicItems.set(item.id, image) }
         image.x = Math.round(item.x); image.y = Math.round(item.y); image.zIndex = item.y; continue
@@ -132,7 +142,8 @@ export async function createWorld(host, onTick) {
       if (item.kind?.startsWith('dropped-')) {
         if (!image) {
           image=new Graphics()
-          if (item.kind === 'dropped-shovel') image.rect(-1,-10,3,12).fill(0xa97949).rect(-4,1,9,5).fill(0xa9afa3)
+          if (item.kind === 'dropped-rod') image.moveTo(-8,5).lineTo(8,-8).stroke({width:2,color:0x8d603c})
+          else if (item.kind === 'dropped-shovel') image.rect(-1,-10,3,12).fill(0xa97949).rect(-4,1,9,5).fill(0xa9afa3)
           else if (item.kind === 'dropped-photo') image.rect(-7,-5,14,10).fill(0xe8d7aa).rect(-4,-3,8,5).fill(0x829075)
           else image.rect(-6,-7,12,13).fill(0x789653).rect(-4,-9,8,4).fill(0xc7b48b)
           dynamicLayer.addChild(image); dynamicItems.set(item.id,image)
@@ -180,6 +191,7 @@ export async function createWorld(host, onTick) {
     }
     updateCamera(player)
   }
+  function setFishingPose(sitting) { if (!actor || actor.scale.y === (sitting ? .75 : 1)) return; actor.scale.y=sitting ? .75 : 1; actor.y=Math.round((actor.zIndex-4) + (sitting ? 3 : 0)) }
   function dive(start, progress) {
     if (!actor) return
     actor.x = Math.round(start.x + (VILLAGE.well.x - start.x) * progress)
@@ -198,5 +210,5 @@ export async function createWorld(host, onTick) {
     return true
   }
   app.ticker.add(onTick)
-  return { draw, move, movePoint, canSee, dive, setActors, findDrop, forestPhoto: () => forestPhoto, destroy() { app.ticker.remove(onTick); app.destroy(true, { children: true }) } }
+  return { draw, move, movePoint, canSee, dive, setActors, setFishingPose, findDrop, forestPhoto: () => forestPhoto, destroy() { app.ticker.remove(onTick); app.destroy(true, { children: true }) } }
 }
