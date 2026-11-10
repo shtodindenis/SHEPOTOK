@@ -1,7 +1,8 @@
-import { forestRoad, forestTrees, STASH, CAMP, FOREST_EAST } from './forestMap.js'
+import { Graphics } from 'pixi.js'
+import { forestRoad, forestTrees, FOREST_PATHS, FOREST_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST } from './forestMap.js'
 import { SHADOWS, MANSION_WALLS, MANSION_FURNITURE } from './mansionLayout.js'
 
-export function buildScene({ sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight }) {
+export function buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight }) {
 function ground(source, col, row) {
   for (let y = 0; y < mapHeight; y += 16) for (let x = 0; x < mapWidth; x += 16) sprite(source, x, y, col, row, 1, false)
 }
@@ -31,33 +32,57 @@ function buildRoom(hut = false) {
   }
 }
 function buildForest() {
-  for (let y = 0; y < mapHeight; y += 16) for (let x = 0; x < mapWidth; x += 16) {
-    const grass = sprite(sheet, x, y, ((x / 16 + y / 16 * 7) % 11 === 0) ? 1 : 0, 0, 1, false)
-    grass.tint = 0xb4d1a5
+  const ground = new Graphics().rect(0,0,mapWidth,mapHeight).fill(0x719f60)
+  const road=(points,width,color) => {
+    ground.moveTo(points[0].x,points[0].y)
+    for(let i=1;i<points.length;i++) {
+      const a=points[i-1], b=points[i], dx=b.x-a.x, dy=b.y-a.y, length=Math.hypot(dx,dy)
+      const steps=Math.max(1,Math.ceil(length/22))
+      for(let j=1;j<=steps;j++) {
+        const t=j/steps, bend=Math.sin(t*Math.PI)*Math.sin(i*2.7+t*5)*3
+        ground.lineTo(a.x+dx*t-dy/length*bend,a.y+dy*t+dx/length*bend)
+      }
+    }
+    ground.stroke({width,color,cap:'round',join:'round'})
   }
-  // Select edges from the complete road mask, including both junctions.
-  for (let y = 0; y < mapHeight; y += 16) for (let x = 0; x < mapWidth; x += 16) if (forestRoad(x, y)) {
-    const col = !forestRoad(x - 16, y) ? 0 : !forestRoad(x + 16, y) ? 2 : 1
-    const row = !forestRoad(x, y - 16) ? 1 : !forestRoad(x, y + 16) ? 3 : 2
-    sprite(sheet, x, y, col, row, 1, false).tint = 0xb4d1a5
+  for(const [i,path] of FOREST_PATHS.entries()) road(path,i===0?40:29,0x8c724c)
+  for(const [i,path] of FOREST_PATHS.entries()) road(path,i===0?32:21,0xb8996b)
+  world.addChild(ground)
+  const detail=new Graphics()
+  for(let y=20;y<mapHeight-15;y+=19) for(let x=15;x<mapWidth-10;x+=25) {
+    const n=(x*71+y*19)%37
+    if(forestRoad(x-8,y-8)) {
+      if(n<6) detail.rect(x,y,3,1).fill({color:0x7e6849,alpha:.45}).rect(x+4,y+4,2,1).fill({color:0xe1c490,alpha:.48})
+    } else if(n<9) detail.rect(x,y,3,1).fill({color:0x447d49,alpha:.6}).rect(x+2,y-2,1,3).fill({color:0x5b9655,alpha:.7})
+    else if(n===12) detail.rect(x,y,2,2).fill(0xd6d69a).rect(x+3,y+1,1,1).fill(0xd9ab9b)
   }
-  for (const t of forestTrees) tree(t.x, t.y, t.col)
-  if (!scene.trip) sprite(sheet, 180, 184, 5, 2, 1.25)
-  // Small non-solid plants add variety without closing the narrow trails.
-  for (let y=48; y<mapHeight-24; y+=39) for (let x=30; x<mapWidth-24; x+=47) {
-    if ((x*3+y*7)%11<5 || forestRoad(x,y) || Math.hypot(x-CAMP.x,y-CAMP.y)<70 || Math.hypot(x-STASH.x,y-STASH.y)<48) continue
-    const variant=(Math.floor(x/47)+Math.floor(y/39)*3)%5
-    objectSprite(sheet, x, y, variant===0?5:variant===1?10:5, variant===0?2:variant===1?8:variant===2?1:0, 1, false)
+  world.addChild(detail)
+  const stash=stashAt(scene.stashIndex)
+  for(const t of forestTrees) {
+    const x=t.x+8, y=t.y+32, scale=t.scale, left=Math.round(x-8*scale), top=Math.round(y-32*scale)
+    world.addChild(new Graphics().ellipse(x+2,y-3,12*scale,4*scale).fill({color:0x314d34,alpha:.24}))
+    depthGroup(y-2*scale, () => {
+      for(const [row,offset] of [[0,0],[1,16]]) {
+        const tile=sprite(sheet,left,top+offset*scale,t.col,row,scale,false); tile.tint=t.tint
+        if(t.flip) { tile.scale.x=-scale; tile.x=left+16*scale }
+      }
+      const leaves=new Graphics().rect(left+5*scale,top+10*scale,scale,scale).rect(left+10*scale,top+17*scale,scale,scale).fill({color:0xc2e4a0,alpha:.5})
+      world.addChild(leaves)
+    })
   }
-  // Distinctive landmarks are visible both here and in the actual photograph.
-  tree(STASH.x+38, STASH.y-50, 3)
-  objectSprite(sheet, STASH.x-45, STASH.y-32, 10, 8, 1.3, false)
-  objectSprite(sheet, STASH.x+28, STASH.y+18, 5, 2, 1.2, false)
-  campTent(CAMP.x-36, CAMP.y-55)
-  objectSprite(dungeon, CAMP.x+30, CAMP.y-17, 6, 9, 1.4, false)
-  objectSprite(dungeon, CAMP.x, CAMP.y-8, 5, 9, 1.1, false)
-  sprite(sheet, 84, 190, 11, 6)
-  if (scene.trip && !scene.wolfDefeated) objectSprite(dungeon, FOREST_EAST.x, FOREST_EAST.y-16, 4, 10, 1.2)
+  for(const rect of FOREST_SOLIDS) collision.addRect(rect)
+  if (!scene.trip) objectSprite(sheet,180,184,5,2,1.25)
+  for (let y=48;y<mapHeight-24;y+=41) for(let x=30;x<mapWidth-24;x+=53) {
+    if((x*3+y*7)%11<5 || forestRoad(x,y) || Math.hypot(x-CAMP.x,y-CAMP.y)<70 || Math.hypot(x-stash.x,y-stash.y)<30) continue
+    objectSprite(sheet,x,y,(x+y)%3===0?10:5,(x+y)%3===0?8:2,1,false)
+  }
+  // Distinctive objects next to each tree make the photograph useful.
+  for(const [i,p] of STASH_SPOTS.entries()) objectSprite(sheet,p.x+(i%2?22:-30),p.y-5,i%2?10:5,i%2?8:2,1,false)
+  campTent(CAMP.x-36,CAMP.y-55)
+  objectSprite(dungeon,CAMP.x+30,CAMP.y-17,6,9,1.4,false)
+  objectSprite(dungeon,CAMP.x,CAMP.y-8,5,9,1.1,false)
+  sprite(sheet,84,190,11,6)
+  if(scene.trip && !scene.wolfDefeated) objectSprite(dungeon,FOREST_EAST.x,FOREST_EAST.y-16,4,10,1.2)
 }
 
 

@@ -8,7 +8,7 @@ import { achievements } from './achievements.js'
 import { QUIZ_TIME_MS, quizQuestions, quizResult, validQuiz } from './wellQuiz.js'
 import { VILLAGE, OTHER_DOORS } from './village.js'
 import { createWorld } from './world.js'
-import { behindTree, STASH, CAMP, FOREST_EAST } from './forestMap.js'
+import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST } from './forestMap.js'
 import { QUEST_STATES, SEATS, advanceChairs, createChairs, createTail, inShadow, sitDown, updateTail } from './societyQuest.js'
 import { MANSION_ENTRY, MANSION_CHAIR, createMansionPatrol, advanceMansionPatrol } from './mansionLayout.js'
 
@@ -16,6 +16,7 @@ export function useGame() {
   const canvasHost = ref(null), screen = ref('title'), location = ref('home'), stage = ref(0)
   const dialog = ref(null), near = ref(''), sound = ref(true), shovel = ref(false), shovelUsed = ref(false)
   const note = ref(false), trip = ref(false), wolfDefeated = ref(false), endingKind = ref('healed')
+  const stashIndex = ref(0)
   const societyProgress = ref(0), questState = ref('none'), questStatus = ref('')
   const stashState = ref('buried'), slots = ref(readSlots()), slotMode = ref('load'), slotNotice = ref(''), slotFromGame = ref(false)
   const shovelPermission = ref(false), witchAngry = ref(false), wrongDigs = ref(0), wellQuizPassed = ref(false), pendingDiver = ref('')
@@ -54,9 +55,9 @@ export function useGame() {
     () => { unlockAchievement('wolf_loss'); screen.value = 'game'; audio.beep(110, .2); speak('wolfFail', () => finishEnding('wolf')) },
   )
 
-  function snapshot() { return { location: location.value, stage: stage.value, note: note.value, shovel: shovel.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, carriedChair, ragTaken: ragTaken.value || !!droppedRag.value, bikeClean: bikeClean.value } }
+  function snapshot() { return { location: location.value, stage: stage.value, stashIndex: stashIndex.value, note: note.value, shovel: shovel.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, carriedChair, ragTaken: ragTaken.value || !!droppedRag.value, bikeClean: bikeClean.value } }
   function drawScene() { if (renderer) { renderer.draw(snapshot(), player); if (location.value === 'forest') photo.value = renderer.forestPhoto(); near.value = '' } }
-  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, forestVersion: 3, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
+  function saveData() { return { stage: stage.value, location: location.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, wolfDefeated: wolfDefeated.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 4, homeVersion: 1, hutVersion: 2, villageVersion: 1, ragTaken: ragTaken.value, droppedRag: droppedRag.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
   function save() { writeSave(saveData()) }
   function unlockEnding(id) {
     if (!unlocked.value.includes(id)) unlocked.value = [...unlocked.value, id]
@@ -108,6 +109,7 @@ export function useGame() {
     const saved = slotSave || (restore ? readSave() : null)
     dialog.value = null; choice.value = false; photoOpen.value = false; quiz.value = null; pendingDiver.value = ''; battle.stop(); endingKind.value = 'healed'; keys.clear(); tail = null; chairGame = null; carriedChair = false
     if (saved) {
+      stashIndex.value = Number.isInteger(saved.stashIndex) && saved.stashIndex >= 0 && saved.stashIndex < STASH_SPOTS.length ? saved.stashIndex : 0
       stage.value = saved.stage; location.value = saved.location; player.x = saved.player.x; player.y = saved.player.y
       if (saved.location === 'village' && saved.villageVersion !== 1) {
         const target = saved.quiz ? VILLAGE.neighbor : saved.player.x >= 570 ? VILLAGE.forest : saved.player.x >= 400 ? VILLAGE.mansion : saved.player.x >= 240 ? VILLAGE.hut : saved.player.x >= 140 ? VILLAGE.well : VILLAGE.home
@@ -132,7 +134,7 @@ export function useGame() {
       if (questState.value === 'tail') { questState.value = 'tail_ready'; location.value = 'forest'; player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y }
       if (questState.value === 'heist' || location.value === 'mansion') { questState.value = 'heist_ready'; location.value = 'village'; player.x = VILLAGE.mansion.x; player.y = VILLAGE.mansion.y }
       if (questState.value === 'chairs') { questState.value = 'report2'; location.value = 'society'; player.x = 160; player.y = 151 }
-      if (saved.location === 'forest' && saved.forestVersion !== 3) {
+      if (saved.location === 'forest' && saved.forestVersion !== 4) {
         player.x = questState.value === 'tail_ready' ? FOREST_EAST.x-30 : 40
         player.y = 224
       }
@@ -144,7 +146,7 @@ export function useGame() {
       stage.value = 0; location.value = 'home'; player.x = 145; player.y = 110; shovel.value = false; shovelUsed.value = false; note.value = false; trip.value = false; wolfDefeated.value = false
       societyProgress.value = 0
       questState.value = 'none'
-      stashState.value = 'buried'
+      stashState.value = 'buried'; stashIndex.value = Math.floor(Math.random() * STASH_SPOTS.length)
       shovelPermission.value = false; witchAngry.value = false; wrongDigs.value = 0; wellQuizPassed.value = false
     }
     if (unlocked.value.includes('diver')) unlockAchievement('diver', false)
@@ -197,7 +199,7 @@ export function useGame() {
   }
   function startTail() {
     const mode = stashState.value === 'witch' ? 'carrying' : stashState.value === 'buried' ? 'buried' : 'empty'
-    questState.value = 'tail'; tail = createTail(mode); player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y; drawScene(); save(); speak(mode === 'carrying' ? 'tailStartCarrying' : mode === 'empty' ? 'tailStartEmpty' : 'tailStart')
+    questState.value = 'tail'; tail = createTail(mode, stashIndex.value); player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y; drawScene(); save(); speak(mode === 'carrying' ? 'tailStartCarrying' : mode === 'empty' ? 'tailStartEmpty' : 'tailStart')
   }
   function startHeist() { questState.value = 'heist'; carriedChair = false; patrol = createMansionPatrol(); transition('mansion', MANSION_ENTRY.x, MANSION_ENTRY.y); save() }
   function startChairs() { questState.value = 'chairs'; chairGame = createChairs(); chairStarts = []; player.x = 160; player.y = 153; drawScene(); syncMusic(); save() }
@@ -306,7 +308,7 @@ export function useGame() {
     if (screen.value !== 'game' || dialog.value || choice.value || questState.value === 'tail' || location.value !== 'forest' || !shovel.value || shovelUsed.value) return
     audio.beep(150, .12)
     if (stage.value < 2 && stashState.value === 'witch') { speak('stashMissing'); return }
-    if (stage.value === 1 && Math.hypot(player.x-STASH.x, player.y-STASH.y) < 12) speak('stash', () => { stage.value = 2; stashState.value = 'player'; shovelUsed.value = true; drawScene() })
+    if (stage.value === 1 && Math.hypot(player.x-stashAt(stashIndex.value).x, player.y-stashAt(stashIndex.value).y) < 12) speak('stash', () => { stage.value = 2; stashState.value = 'player'; shovelUsed.value = true; drawScene() })
     else if (stage.value === 1 && note.value) {
       if (shovelPermission.value) { wrongDigs.value = Math.min(5, wrongDigs.value + 1); if (wrongDigs.value === 5) unlockAchievement('missed_digs'); save() }
       dialog.value = { lines: [['ТИГРАН', 'Здесь пусто. Надо ещё раз свериться с фотографией.']], index: 0 }; keys.clear()
@@ -358,7 +360,7 @@ export function useGame() {
         tail = null; questState.value = 'report1'; societyProgress.value = 1; drawScene(); save(); speak(story); return
       }
       actors.push({ id:'witch', x:tail.x, y:tail.y, col:0 })
-      if (tail.digging && !tail.dug && tail.mode === 'buried') actors.push({ id:'treasure', kind:'treasure', x:STASH.x, y:STASH.y })
+      if (tail.digging && !tail.dug && tail.mode === 'buried') actors.push({ id:'treasure', kind:'treasure', x:stashAt(stashIndex.value).x, y:stashAt(stashIndex.value).y })
     } else if (questState.value === 'heist' && location.value === 'mansion') {
       advanceMansionPatrol(patrol, delta, renderer.movePoint)
       const witch = patrol, hidden = inShadow(player)

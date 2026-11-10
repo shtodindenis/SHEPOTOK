@@ -5,7 +5,7 @@ import { HUT_WIDTH, HUT_HEIGHT, HUT_SCALE, buildHut, addHutLighting } from './hu
 import { createCollision } from './collision.js'
 import { buildScene } from './scenes.js'
 import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSION_CHAIR } from './mansionLayout.js'
-import { FOREST_WIDTH, FOREST_HEIGHT, STASH } from './forestMap.js'
+import { FOREST_WIDTH, FOREST_HEIGHT, stashAt } from './forestMap.js'
 
 const VIEW_WIDTH = 320, VIEW_HEIGHT = 192
 
@@ -20,7 +20,7 @@ export async function createWorld(host, onTick) {
   const world = new Container(), textures = new WeakMap()
   world.sortableChildren = true
   app.stage.addChild(world)
-  let scene = { location: 'home' }, mapWidth = VIEW_WIDTH, mapHeight = VIEW_HEIGHT, collision, actor, dynamicLayer, dynamicItems = new Map(), forestPhoto = ''
+  let scene = { location: 'home' }, mapWidth = VIEW_WIDTH, mapHeight = VIEW_HEIGHT, collision, actor, dynamicLayer, dynamicItems = new Map(), forestPhoto = '', runningTrees = []
 
   function tileTexture(source, col, row) {
     const spacing = source === furniture || source === interior || source === caves ? 17 : 16
@@ -82,6 +82,7 @@ export async function createWorld(host, onTick) {
     mapWidth = scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
     mapHeight = scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
     collision = createCollision(mapWidth, mapHeight)
+    runningTrees = []
     for (const child of world.removeChildren()) child.destroy({ children: true })
     if (scene.location === 'village') buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene})
     else if (scene.location === 'hut') {
@@ -92,17 +93,26 @@ export async function createWorld(host, onTick) {
       buildHut({ world:room, sprite:hutSprite, interior, furniture, dungeon, sheet, caves, collision:hutCollision, scene, character:hutCharacter })
     }
     else if (scene.location === 'home') buildHome({ world, sprite, interior, furniture, dungeon, collision, scene, depthGroup })
-    else buildScene({ sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight })
+    else buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight })
     if (scene.location === 'mansion') {
       for (const rect of [...MANSION_WALLS, ...MANSION_FURNITURE]) collision.addRect(rect)
       if (!scene.carriedChair) collision.addRect({ x:MANSION_CHAIR.x-8, y:MANSION_CHAIR.y-24, w:16, h:16 })
     }
-    if (scene.location === 'forest' && !forestPhoto) {
-      const photo = app.renderer.extract.canvas({ target:world, frame:new Rectangle(STASH.x-96, STASH.y-64, 192, 128) })
+    if (scene.location === 'forest') {
+      const stash=stashAt(scene.stashIndex)
+      const photo = app.renderer.extract.canvas({ target:world, frame:new Rectangle(stash.x-96, stash.y-64, 192, 128) })
       forestPhoto = photo.toDataURL('image/png')
     }
     collision.restore(player, bounds())
     actor = character(player.x, player.y)
+    if (scene.location === 'forest' && scene.trip) {
+      for (let i=0;i<3;i++) {
+        const runner=new Container(), body=new Container(), legs=new Graphics()
+        for (let row=0;row<2;row++) { const part=new Sprite(tileTexture(sheet, i===1?3:4, row)); part.x=-8; part.y=-32+row*16; body.addChild(part) }
+        body.scale.set(1.7); runner.addChild(legs,body); world.addChild(runner)
+        runningTrees.push({runner,body,legs,index:i})
+      }
+    }
     dynamicLayer = world; dynamicItems = new Map()
     if (scene.location === 'home') addHomeLighting(world, actor)
     if (scene.location === 'hut') { const lighting = new Container(); lighting.scale.set(HUT_SCALE); lighting.sortableChildren = true; lighting.zIndex = 100000; world.addChild(lighting); addHutLighting(lighting) }
@@ -150,6 +160,14 @@ export async function createWorld(host, onTick) {
   function move(player, dx, dy, elapsed, facingLeft) {
     movePoint(player, dx, dy)
     actor.x = Math.round(player.x); actor.y = Math.round(player.y + ((dx || dy) ? Math.sin(elapsed * .22) : 0)); actor.scale.x = facingLeft ? -1 : 1; actor.zIndex = player.y + 4
+    if (scene.location === 'forest' && scene.trip) for (const {runner,body,legs,index} of runningTrees) {
+      const phase=(elapsed*.0038+index/3)%1, stride=Math.sin(elapsed*.24+index*2)
+      runner.x=player.x+[-95,30,112][index]+Math.sin(elapsed*.012+index)*12
+      runner.y=player.y-150+phase*300
+      runner.zIndex=runner.y+1; runner.alpha=Math.min(1,phase*8,(1-phase)*8)
+      body.rotation=stride*.09; body.y=-Math.abs(stride)*4
+      legs.clear().moveTo(-4,-2).lineTo(-7+stride*8,9).moveTo(4,-2).lineTo(7-stride*8,9).stroke({width:4,color:0x634a32,cap:'round'})
+    }
     updateCamera(player)
   }
   function dive(start, progress) {
