@@ -1,8 +1,10 @@
 export const QUEST_STATES = ['none','tail_ready','tail','escort_forest','escort_village','escort_hut','report1','heist_ready','heist','report2','chairs','done']
 import { stashRoute } from './forestMap.js'
 const RETURN_ROUTE = [{x:512,y:352},{x:512,y:208},{x:336,y:208},{x:336,y:320},{x:160,y:320},{x:160,y:224},{x:35,y:224}]
-export { inMansionShadow as inShadow } from './mansionLayout.js'
-export const SEATS = [{x:136,y:116},{x:160,y:116},{x:184,y:116}]
+// The chairs and dancers share the carpet in Captain Cook's room.
+export const CHAIR_CENTER = {x:625,y:155}
+export const CHAIR_RADIUS = {x:55,y:27}
+export const SEATS = [-24,0,24].map(dx => ({x:CHAIR_CENTER.x+dx,y:CHAIR_CENTER.y}))
 export function createTail(mode = 'buried', stashIndex = 0) {
   const approach=[{x:704,y:224},{x:704,y:352},{x:512,y:352}], branch=stashRoute(stashIndex)
   const route=mode==='carrying' ? [...approach,...RETURN_ROUTE.slice(1)] : [...approach,...branch,...branch.slice(0,-1).reverse(),...RETURN_ROUTE]
@@ -24,7 +26,7 @@ export function updateTail(tail, dt, player, hidden) {
 }
 export function createChairs() { return { round:1, phase:'music', elapsed:0, angle:0 } }
 export function advanceChairs(game, dt) {
-  game.elapsed += Math.min(dt, 50); game.angle += Math.min(dt,50)*.0014
+  game.elapsed += Math.min(dt, 50); game.angle += Math.min(dt,50)*.00165
   if (game.phase === 'music' && game.elapsed >= 6500) { game.phase='stop'; game.elapsed=0; return 'stopped' }
   if (game.phase === 'stop' && game.elapsed >= 3000) return 'failed'
   return null

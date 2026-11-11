@@ -72,11 +72,11 @@ export function buildHut({ world, sprite, interior, furniture, dungeon, sheet, c
 export function addHutLighting(world) {
   const canvas=document.createElement('canvas'); canvas.width=512; canvas.height=320
   const ctx=canvas.getContext('2d')
-  ctx.fillStyle='#343039'; ctx.fillRect(0,0,512,320)
+  ctx.fillStyle='#898078'; ctx.fillRect(0,0,512,320)
   for(const [x,y,r] of HUT_LIGHTS) {
     ctx.save(); ctx.beginPath(); ctx.rect(x<248?16:256,32,x<248?232:240,272); ctx.clip()
     const glow=ctx.createRadialGradient(x,y,1,x,y,r)
-    glow.addColorStop(0,'rgba(255,205,143,1)'); glow.addColorStop(.25,'rgba(204,126,70,.85)'); glow.addColorStop(.58,'rgba(135,76,50,.48)'); glow.addColorStop(1,'rgba(80,55,48,0)')
+    glow.addColorStop(0,'rgba(255,220,180,1)'); glow.addColorStop(.25,'rgba(255,220,180,.7)'); glow.addColorStop(.58,'rgba(255,220,180,.25)'); glow.addColorStop(1,'rgba(255,220,180,0)')
     ctx.fillStyle=glow; ctx.fillRect(x-r,y-r,r*2,r*2); ctx.restore()
   }
   const light=new Sprite(Texture.from(canvas)); light.blendMode='multiply'; light.zIndex=100000; world.addChild(light)

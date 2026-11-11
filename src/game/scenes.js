@@ -1,7 +1,6 @@
 import { Graphics } from 'pixi.js'
 import { drawCaptain } from './societyLocation.js'
 import { forestRoad, forestTrees, FOREST_PATHS, forestPathsFor, FOREST_SOLIDS, FOREST_MUSHROOMS, FOREST_LOGS, FOREST_PROP_SOLIDS, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_SIGN_SOLID } from './forestMap.js'
-import { SHADOWS, MANSION_WALLS, MANSION_FURNITURE } from './mansionLayout.js'
 
 export function buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight }) {
 function ground(source, col, row) {
@@ -109,28 +108,7 @@ function buildSociety() {
   if (scene.societyProgress === 3) objectSprite(furniture, 224, 113, 19, 2, 1.3, false).tint = 0xff4444
 }
 
-function buildMansion() {
-  ground(furniture, 8, 2)
-  for (const s of SHADOWS) for (let y = s.y; y < s.y+s.h; y += 16) for (let x = s.x; x < s.x+s.w; x += 16)
-    sprite(furniture, x, y, 8, 2, 1, false).tint = 0x77717e
-  // A runner connects the entrance and the rooms and makes the lit route legible.
-  for (let x = 32; x < 736; x += 16) for (let y = 192; y < 256; y += 16)
-    sprite(furniture, x, y, 8, 2, 1, false).tint = 0xbb8c75
-  for (const wall of MANSION_WALLS) for (let y = wall.y; y < wall.y+wall.h; y += 16) for (let x = wall.x; x < wall.x+wall.w; x += 16)
-    objectSprite(dungeon, x, y, 4, 3, 1, false)
-  for (const item of MANSION_FURNITURE) depthGroup(item.y+item.h, () => {
-    for (let x = item.x; x < item.x + item.w; x += 16) {
-      sprite(dungeon, x, item.y, item.kind === 'cabinet' ? 3 : 0, item.kind === 'cabinet' ? 5 : 6, 1, false)
-      sprite(dungeon, x, item.y+16, item.kind === 'cabinet' ? 3 : 0, item.kind === 'cabinet' ? 6 : 6, 1, false)
-    }
-  })
-  for (const x of [144, 400, 640]) { sprite(dungeon, x, 32, 5, 9, 1, false); sprite(dungeon, x+32, 32, 8, 9, 1, false) }
-  for (const [x,y] of [[96,352],[352,352],[672,352]]) objectSprite(dungeon, x, y-8, 6, 9, 1, false)
-  sprite(dungeon, 16, 208, 10, 3, 1, false)
-}
-
   if (scene.location === 'forest') buildForest()
   else if (scene.location === 'society') buildSociety()
-  else if (scene.location === 'mansion') buildMansion()
   else buildRoom(scene.location === 'hut')
 }

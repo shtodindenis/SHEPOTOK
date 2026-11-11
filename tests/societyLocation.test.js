@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createCollision } from '../src/game/collision.js'
+import { CHAIR_CENTER, CHAIR_RADIUS, SEATS } from '../src/game/societyQuest.js'
 import { buildSocietyHouse, buildSettlement, SOCIETY_WIDTH, SOCIETY_HEIGHT, SETTLEMENT_WIDTH, SETTLEMENT_HEIGHT, SOCIETY_ENTRY, CAPTAIN, SETTLEMENT_FOREST, SETTLEMENT_HOUSE } from '../src/game/societyLocation.js'
 
 function reachable(collision, width, height, start) {
@@ -32,4 +33,14 @@ test('settlement trail connects forest and society door', () => {
   const collision=draw(buildSettlement,SETTLEMENT_WIDTH,SETTLEMENT_HEIGHT)
   const points=reachable(collision,SETTLEMENT_WIDTH,SETTLEMENT_HEIGHT,[SETTLEMENT_FOREST.x+20,SETTLEMENT_FOREST.y])
   assert.ok(points.some(([x,y])=>Math.hypot(x-SETTLEMENT_HOUSE.x,y-SETTLEMENT_HOUSE.y)<20))
+})
+
+test('the chairs and the dancers fit in the captain room and the player can reach each chair', () => {
+  const collision=draw(buildSocietyHouse,SOCIETY_WIDTH,SOCIETY_HEIGHT)
+  const points=reachable(collision,SOCIETY_WIDTH,SOCIETY_HEIGHT,[CHAIR_CENTER.x,CHAIR_CENTER.y+43])
+  for(const seat of SEATS) assert.ok(points.some(([x,y])=>Math.hypot(x-seat.x,y-seat.y)<10))
+  for(let i=0;i<72;i++) {
+    const angle=i*Math.PI/36, x=CHAIR_CENTER.x+CHAIR_RADIUS.x*Math.cos(angle), y=CHAIR_CENTER.y+CHAIR_RADIUS.y*Math.sin(angle)
+    assert.equal(collision.blocked(x,y),false,`dancer blocked at ${x},${y}`)
+  }
 })

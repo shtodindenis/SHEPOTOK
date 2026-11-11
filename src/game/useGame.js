@@ -4,6 +4,7 @@ import { startFishing, updateFishing, hookFish } from './fishing.js'
 import { RIVER_ENTRY, RIVER_ROD, RIVER_FISHER, canFishAtRiver } from './river.js'
 import { reconcileInventory } from './inventory.js'
 import { createAudio } from './audio.js'
+import { STAMINA_MAX, SPRINT_MULTIPLIER, updateStamina } from './stamina.js'
 import { getBikeHint, getQuestHint } from './hints.js'
 import { createSkillCheck, directionFromEvent } from './skillCheck.js'
 import { readAchievements, readEndings, readSave, readSlots, writeAchievements, writeEndings, writeSave, writeSlot } from './storage.js'
@@ -14,8 +15,8 @@ import { VILLAGE, OTHER_DOORS } from './village.js'
 import { createWorld } from './world.js'
 import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_MUSHROOMS, RIVER_PATH_ENTRY, FOREST_SIGN } from './forestMap.js'
 import { SOCIETY_ENTRY, CAPTAIN, SETTLEMENT_FOREST, SETTLEMENT_HOUSE } from './societyLocation.js'
-import { QUEST_STATES, SEATS, advanceChairs, advanceEscort, createChairs, createTail, inShadow, sitDown, updateTail } from './societyQuest.js'
-import { MANSION_ENTRY, MANSION_CHAIR, createMansionPatrol, advanceMansionPatrol } from './mansionLayout.js'
+import { QUEST_STATES, SEATS, CHAIR_CENTER, CHAIR_RADIUS, advanceChairs, advanceEscort, createChairs, createTail, sitDown, updateTail } from './societyQuest.js'
+import { MANSION_ENTRY, MANSION_CHAIR, MANSION_STAIRS, MANSION_HIDING, FLOOR_HEIGHT, createMansionPatrol, advanceMansionPatrol } from './mansionLayout.js'
 
 export function useGame() {
   const canvasHost = ref(null), screen = ref('title'), location = ref('home'), stage = ref(0)
@@ -25,7 +26,8 @@ export function useGame() {
   const societyProgress = ref(0), questState = ref('none'), questStatus = ref('')
   const stashState = ref('buried'), slots = ref(readSlots()), slotMode = ref('load'), slotNotice = ref(''), slotFromGame = ref(false)
   const shovelPermission = ref(false), witchAngry = ref(false), wrongDigs = ref(0), wellQuizPassed = ref(false), pendingDiver = ref('')
-  const urgency = ref(null)
+  const urgency = ref(null), stamina = ref(STAMINA_MAX)
+  let staminaExhausted = false
   const quiz = ref(null), quizSelected = ref(0), achievementUnlocked = ref(readAchievements()), achievementToast = ref(null)
   const photoOpen = ref(false), photo = ref('')
   const ragTaken = ref(false), bikeQuest = ref(false), bikeClean = ref(false), selectedInventorySlot = ref(-1)
@@ -49,7 +51,7 @@ export function useGame() {
   const keys = new Set(), player = { x: 160, y: 135 }
   const audio = createAudio(() => sound.value)
   let renderer, curseTimer, achievementTimer, elapsed = 0, diveElapsed = 0, diveStart = { x: 0, y: 0 }, diveCause = 'jump', lastQuizSecond = 0, disposed = false
-  let tail = null, escort = null, patrol = null, carriedChair = false, chairGame = null, chairStarts = []
+  let tail = null, escort = null, patrol = null, carriedChair = false, chairGame = null, chairStarts = [], mansionHidden = null, mansionChair = { ...MANSION_CHAIR }
   function syncMusic() {
     let track = null
     if (screen.value === 'title' || screen.value === 'gallery' || screen.value === 'achievements' || (screen.value === 'slots' && !slotFromGame.value)) track = 'menu'
@@ -142,6 +144,7 @@ export function useGame() {
     else if (result === 'won') { quiz.value = null; wellQuizPassed.value = true; keys.clear(); unlockAchievement('wise'); save(); speak('quizWin') }
   }
   function start(restore = false, slotSave = null) {
+    stamina.value=STAMINA_MAX; staminaExhausted=false
     const saved = slotSave || (restore ? readSave() : null)
     dialog.value = null; choice.value = false; fishing.value = null; photoOpen.value = false; photo.value = ''; quiz.value = null; pendingDiver.value = ''; urgency.value = null; escort = null; battle.stop(); endingKind.value = 'healed'; keys.clear(); tail = null; chairGame = null; carriedChair = false
     if (saved) {
@@ -265,8 +268,8 @@ export function useGame() {
     const mode = stashState.value === 'witch' ? 'carrying' : stashState.value === 'buried' ? 'buried' : 'empty'
     questState.value = 'tail'; tail = createTail(mode, stashIndex.value); player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y; drawScene(); save(); speak(mode === 'carrying' ? 'tailStartCarrying' : mode === 'empty' ? 'tailStartEmpty' : 'tailStart')
   }
-  function startHeist() { questState.value = 'heist'; carriedChair = false; patrol = createMansionPatrol(); transition('mansion', MANSION_ENTRY.x, MANSION_ENTRY.y); save() }
-  function startChairs() { questState.value = 'chairs'; chairGame = createChairs(); chairStarts = []; player.x = 160; player.y = 153; drawScene(); syncMusic(); save() }
+  function startHeist() { questState.value = 'heist'; carriedChair = false; mansionHidden = null; mansionChair = { ...MANSION_CHAIR }; patrol = createMansionPatrol(); transition('mansion', MANSION_ENTRY.x, MANSION_ENTRY.y); save() }
+  function startChairs() { questState.value = 'chairs'; chairGame = createChairs(); chairStarts = []; player.x = CHAIR_CENTER.x; player.y = CHAIR_CENTER.y+43; drawScene(); syncMusic(); save() }
   function returnFromHeist() {
     questState.value = carriedChair ? 'report2' : 'heist_ready'
     if (carriedChair) societyProgress.value = 2
@@ -277,7 +280,7 @@ export function useGame() {
     if (!chairGame) return
     const result = sitDown(chairGame, player)
     if (result === 'won') {
-      questState.value = 'done'; societyProgress.value = 3; chairGame = null; player.x = CAPTAIN.x; player.y = CAPTAIN.y + 22; unlockAchievement('throne'); drawScene(); save(); speak('missionThreeDone')
+      questState.value = 'done'; societyProgress.value = 3; chairGame = null; unlockAchievement('throne'); drawScene(); save(); speak('missionThreeDone')
     } else if (result === 'next') { syncMusic(); save() }
   }
   function selectInventorySlot(index) {
@@ -286,6 +289,7 @@ export function useGame() {
   }
   function dropItem() {
     if (fishing.value) { retrieveRod(); return }
+    if (location.value === 'mansion' && carriedChair && screen.value === 'game' && !dialog.value && !choice.value && !quiz.value && !photoOpen.value) { mansionChair={x:player.x,y:player.y}; carriedChair=false; save(); return }
     if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || urgency.value || questState.value.startsWith('escort_') || !renderer) return
     const kind=inventory.value[selectedInventorySlot.value]
     if (!kind) return
@@ -315,7 +319,11 @@ export function useGame() {
     if (questState.value === 'tail') return []
     if (location.value === 'mansion') return [
       { x: 35, y: 224, label: carriedChair ? 'ВЫНЕСТИ КРАСНЫЙ СТУЛ' : 'ВЫЙТИ ИЗ ОСОБНЯКА', action: returnFromHeist },
-      ...(!carriedChair ? [{ ...MANSION_CHAIR, label: 'ВЗЯТЬ КРАСНЫЙ СТУЛ', action: () => { carriedChair = true; drawScene(); save(); speak('heistTaken') } }] : []),
+      ...(mansionHidden ? [{ ...mansionHidden, label:'ВЫЙТИ ИЗ УКРЫТИЯ', action: () => { mansionHidden=null; renderer.setActorVisible(true) } }] : [
+        ...(!carriedChair ? [{ ...mansionChair, label:'ВЗЯТЬ КРАСНЫЙ СТУЛ', action: () => { carriedChair=true; save(); speak('heistTaken') } }] : []),
+        ...MANSION_STAIRS.map((stair,i) => ({ ...stair, label:i===0 ? 'ПОДНЯТЬСЯ НА ВТОРОЙ ЭТАЖ' : 'СПУСТИТЬСЯ НА ПЕРВЫЙ ЭТАЖ', action: () => { player.x=680; player.y=MANSION_STAIRS[1-i].y; drawScene(); save() } })),
+        ...(!carriedChair ? MANSION_HIDING.map(place => ({ ...place, action: () => { if (patrol.floor === Math.floor(player.y/FLOOR_HEIGHT) && Math.hypot(player.x-patrol.x,player.y-patrol.y)<60 && renderer.canSee(patrol,player)) return; mansionHidden=place; keys.clear(); renderer.setActorVisible(false) } })) : []),
+      ]),
     ]
     if (questState.value === 'chairs') return chairGame?.phase === 'stop' ? SEATS.slice(0, 4-chairGame.round).map(s => ({ ...s, label: 'СЕСТЬ НА КРАСНЫЙ СТУЛ', action: sitAtChair })) : []
     if (location.value === 'home') return [
@@ -420,18 +428,18 @@ export function useGame() {
   }
   function onKey(event) {
     const k = event.key.toLowerCase(), direction = directionFromEvent(event)
-    if (direction || [' ', 'enter', 'e', 'у', 'q', 'й'].includes(k)) event.preventDefault()
+    if (direction || [' ', 'enter', 'e', 'у', 'q', 'й', 'r', 'к', 'shift'].includes(k)) event.preventDefault()
     if (urgency.value?.check && screen.value === 'game') { if (event.code === 'Space' && !event.repeat) { event.preventDefault(); attemptUrgency() }; return }
     if (screen.value === 'battle-ready') { if (!event.repeat && ['enter', ' ', 'e', 'у'].includes(k)) startBattle(); return }
     if (screen.value === 'battle') { if (direction && !event.repeat) battle.attempt(direction); return }
     if (screen.value === 'slots') { if (k === 'escape') closeSlots(); return }
     if (screen.value === 'gallery' || screen.value === 'achievements') { if (k === 'escape') screen.value = 'title'; return }
     if (fishing.value) {
-      if ((event.code==='KeyR' || ['r','к'].includes(k)) && !event.repeat) retrieveRod()
+      if ((event.code==='KeyQ' || ['q','й'].includes(k)) && !event.repeat) retrieveRod()
       else if (event.code==='Space' && !event.repeat) fishingPress(true)
       return
     }
-    if (photoOpen.value) { if (!event.repeat && ['q','й','escape'].includes(k)) photoOpen.value = false; return }
+    if (photoOpen.value) { if (!event.repeat && (event.code === 'KeyR' || ['r','к','escape'].includes(k))) photoOpen.value = false; return }
     if (quiz.value) {
       if (event.repeat) return
       if (direction === 'up' || direction === 'down') quizSelected.value = (quizSelected.value + (direction === 'up' ? -1 : 1) + quizQuestion.value.options.length) % quizQuestion.value.options.length
@@ -446,8 +454,8 @@ export function useGame() {
       return
     }
     if (screen.value === 'game' && !dialog.value && /^[1-6]$/.test(k) && !event.repeat) { selectInventorySlot(Number(k)-1); return }
-    if ((event.code === 'KeyQ' || ['q','й'].includes(k)) && !event.repeat) { useItem(); return }
-    if ((event.code === 'KeyR' || ['r','к'].includes(k)) && !event.repeat) { dropItem(); return }
+    if ((event.code === 'KeyQ' || ['q','й'].includes(k)) && !event.repeat) { dropItem(); return }
+    if ((event.code === 'KeyR' || ['r','к'].includes(k)) && !event.repeat) { useItem(); return }
     if (event.repeat && ['e', 'у', 'enter', ' '].includes(k)) return
     if (['e', 'у', 'enter', ' '].includes(k)) { if (screen.value === 'title') start(false); else if (screen.value === 'ending') screen.value = 'title'; else interact(); return }
     keys.add(k)
@@ -505,19 +513,19 @@ export function useGame() {
       actors.push({id:'witch',x:escort.x,y:escort.y,col:0})
     } else if (questState.value === 'heist' && location.value === 'mansion') {
       advanceMansionPatrol(patrol, delta, renderer.movePoint)
-      const witch = patrol, hidden = inShadow(player)
-      questStatus.value = `${carriedChair ? 'СТУЛ У ТЕБЯ — ВЕРНИСЬ К ВХОДУ' : 'НАЙДИ КРАСНЫЙ СТУЛ В ДАЛЬНЕЙ ЧАСТИ ОСОБНЯКА'} · ${hidden ? 'ТЫ В ТЕНИ' : 'ТЫ НА СВЕТУ'}`
+      const witch = patrol, hidden = !!mansionHidden
+      questStatus.value = `${carriedChair ? 'НЕСИ СТУЛ К ВЫХОДУ · Q — ПОСТАВИТЬ' : 'НАЙДИ КРАСНЫЙ СТУЛ НА ВТОРОМ ЭТАЖЕ'} · ${hidden ? 'ТЫ В УКРЫТИИ' : 'ПРЯЧЬСЯ В МЕБЕЛИ'}`
       if (!hidden && Math.hypot(player.x-witch.x, player.y-witch.y) < 60 && renderer.canSee(witch, player)) {
-        carriedChair = false; patrol = createMansionPatrol(); player.x = MANSION_ENTRY.x; player.y = MANSION_ENTRY.y; drawScene(); save(); speak('heistCaught'); return
+        carriedChair = false; mansionHidden=null; mansionChair={...MANSION_CHAIR}; patrol = createMansionPatrol(); player.x = MANSION_ENTRY.x; player.y = MANSION_ENTRY.y; drawScene(); save(); speak('heistCaught'); return
       }
       actors.push({ id:'witch', ...witch, col:0 })
-      if (!carriedChair) actors.push({ id:'red-chair', kind:'chair', x:MANSION_CHAIR.x, y:MANSION_CHAIR.y-8 })
+      if (!carriedChair) actors.push({ id:'red-chair', kind:'chair', x:mansionChair.x, y:mansionChair.y-8 }); else actors.push({id:'carried-chair',kind:'chair',x:player.x+10,y:player.y-4})
     } else if (questState.value === 'chairs' && chairGame && location.value === 'society') {
       const count = 4-chairGame.round
       const result = advanceChairs(chairGame, delta)
       if (result === 'stopped') {
         syncMusic()
-        chairStarts = Array.from({ length:count }, (_, i) => { const a=chairGame.angle+(i+1)*Math.PI*2/(count+1); return { x:160+56*Math.cos(a), y:116+32*Math.sin(a) } })
+        chairStarts = Array.from({ length:count }, (_, i) => { const a=chairGame.angle+(i+1)*Math.PI*2/(count+1); return { x:CHAIR_CENTER.x+CHAIR_RADIUS.x*Math.cos(a), y:CHAIR_CENTER.y+CHAIR_RADIUS.y*Math.sin(a) } })
       }
       if (result === 'failed') {
         chairGame = null; questState.value = 'report2'; player.x=CAPTAIN.x; player.y=CAPTAIN.y+22; unlockAchievement('chairs_loss'); drawScene(); save(); speak('chairsFailed'); return
@@ -525,7 +533,7 @@ export function useGame() {
       questStatus.value = chairGame.phase === 'music' ? `КРУГ ${chairGame.round} / 3: ХОДИ ВОКРУГ СТУЛЬЕВ. ЖДИ ОСТАНОВКИ МУЗЫКИ` : `КРУГ ${chairGame.round} / 3: СКОРЕЕ К СТУЛУ И НАЖМИ E!`
       for (const [i, seat] of SEATS.slice(0,count).entries()) actors.push({ id:`seat${i}`, kind:'chair', ...seat })
       for (let i=0;i<count;i++) {
-        const a=chairGame.angle+(i+1)*Math.PI*2/(count+1), start=chairGame.phase === 'stop' ? chairStarts[i] : { x:160+56*Math.cos(a), y:116+32*Math.sin(a) }, seat=SEATS[i], t=chairGame.phase === 'stop' ? Math.min(1,chairGame.elapsed/3000) : 0
+        const a=chairGame.angle+(i+1)*Math.PI*2/(count+1), start=chairGame.phase === 'stop' ? chairStarts[i] : { x:CHAIR_CENTER.x+CHAIR_RADIUS.x*Math.cos(a), y:CHAIR_CENTER.y+CHAIR_RADIUS.y*Math.sin(a) }, seat=SEATS[i], t=chairGame.phase === 'stop' ? Math.min(1,chairGame.elapsed/2400) : 0
         actors.push({ id:`npc${i}`, x:start.x+(seat.x-start.x)*t, y:start.y+(seat.y-start.y)*t, col:2+i })
       }
     }
@@ -571,8 +579,15 @@ export function useGame() {
       updateQuest(ticker.deltaMS); return
     }
     const left = keys.has('a') || keys.has('ф') || keys.has('arrowleft'), right = keys.has('d') || keys.has('в') || keys.has('arrowright'), up = keys.has('w') || keys.has('ц') || keys.has('arrowup'), down = keys.has('s') || keys.has('ы') || keys.has('arrowdown')
-    let dx = Number(right) - Number(left), dy = Number(down) - Number(up); const length = Math.hypot(dx, dy) || 1, speed = Math.min(ticker.deltaTime, 2) * 1.05
-    dx = dx / length * speed; dy = dy / length * speed; elapsed += ticker.deltaTime; renderer.move(player, dx, dy, elapsed, left)
+    let dx = Number(right) - Number(left), dy = Number(down) - Number(up)
+    const moving = (dx !== 0 || dy !== 0) && !(mansionHidden && location.value === 'mansion')
+    const sprinting = moving && keys.has('shift') && !staminaExhausted && stamina.value > 0
+    const length = Math.hypot(dx, dy) || 1, speed = Math.min(ticker.deltaTime, 2) * 1.05 * (sprinting ? SPRINT_MULTIPLIER : 1)
+    dx = moving ? dx / length * speed : 0; dy = moving ? dy / length * speed : 0
+    const beforeX=player.x, beforeY=player.y
+    elapsed += ticker.deltaTime; renderer.move(player, dx, dy, elapsed, left)
+    const staminaState=updateStamina(stamina.value, staminaExhausted, sprinting && (player.x !== beforeX || player.y !== beforeY), ticker.deltaMS)
+    stamina.value=staminaState.value; staminaExhausted=staminaState.exhausted
     const cellX = Math.floor(player.x / 16) + 1, cellY = Math.floor(player.y / 16) + 1
     if (coords.value.x !== cellX || coords.value.y !== cellY) coords.value = { x: cellX, y: cellY }
     updateQuest(ticker.deltaMS)
@@ -594,5 +609,5 @@ export function useGame() {
     window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur)
     window.removeEventListener('mousedown', onMouseDown); window.removeEventListener('mouseup', onMouseUp); window.removeEventListener('pointerdown', audio.unlockMusic); window.removeEventListener('keydown', audio.unlockMusic)
   })
-  return { urgency, attemptUrgency, canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle }
+  return { stamina, dropItem, urgency, attemptUrgency, canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle }
 }
