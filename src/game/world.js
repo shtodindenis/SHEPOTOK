@@ -18,10 +18,10 @@ export async function createWorld(host, onTick) {
   const app = new Application()
   await app.init({ width: VIEW_WIDTH, height: VIEW_HEIGHT, background: '#202520', antialias: false, preference: 'webgl', resolution: 1 })
   host.appendChild(app.canvas)
-  const [sheet, dungeon, furniture, interior, bike, caves, riverBoat, fishingRod, mansionDecor] = await Promise.all([
-    Assets.load('/assets/kenney-tiny-town.png'), Assets.load('/assets/kenney-tiny-dungeon.png'), Assets.load('/assets/kenney-roguelike.png'), Assets.load('/assets/kenney-roguelike-indoor.png'), Assets.load('/assets/pitbike.png'), Assets.load('/assets/kenney-caves.png'), Assets.load('/assets/river-boat.png'), Assets.load('/assets/fishing-rod.png'), Assets.load('/assets/mansion-ritpop.png'),
+  const [sheet, dungeon, furniture, interior, bike, caves, riverBoat, fishingRod, mansionDecor, homeDecor] = await Promise.all([
+    Assets.load('/assets/kenney-tiny-town.png'), Assets.load('/assets/kenney-tiny-dungeon.png'), Assets.load('/assets/kenney-roguelike.png'), Assets.load('/assets/kenney-roguelike-indoor.png'), Assets.load('/assets/pitbike.png'), Assets.load('/assets/kenney-caves.png'), Assets.load('/assets/river-boat.png'), Assets.load('/assets/fishing-rod.png'), Assets.load('/assets/mansion-ritpop.png'), Assets.load('/assets/home-metrocity.png'),
   ])
-  for (const texture of [sheet, dungeon, furniture, interior, bike, caves, riverBoat, fishingRod, mansionDecor]) texture.source.scaleMode = 'nearest'
+  for (const texture of [sheet, dungeon, furniture, interior, bike, caves, riverBoat, fishingRod, mansionDecor, homeDecor]) texture.source.scaleMode = 'nearest'
   const world = new Container(), textures = new WeakMap()
   world.sortableChildren = true
   app.stage.addChild(world)
@@ -85,12 +85,15 @@ export async function createWorld(host, onTick) {
   function updateCamera(player) {
     if (scene.location === 'society' && scene.questState === 'chairs') { world.position.set(-448,-32); return }
     const scroll = scene.location === 'detention' || scene.location === 'society_village' || (scene.location === 'society') || scene.location === 'river' || scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
-    const x = scroll ? Math.max(0, Math.min(mapWidth - VIEW_WIDTH, player.x - VIEW_WIDTH / 2)) : 0
-    const y = scroll ? Math.max(0, Math.min(mapHeight - VIEW_HEIGHT, player.y - VIEW_HEIGHT / 2)) : 0
-    world.position.set(-Math.round(x), -Math.round(y))
+    const zoom = scene.location === 'home' ? 0.8 : 1
+    const viewWidth = VIEW_WIDTH / zoom, viewHeight = VIEW_HEIGHT / zoom
+    const x = scroll ? Math.max(0, Math.min(mapWidth - viewWidth, player.x - viewWidth / 2)) : 0
+    const y = scroll ? Math.max(0, Math.min(mapHeight - viewHeight, player.y - viewHeight / 2)) : 0
+    world.position.set(-Math.round(x * zoom), -Math.round(y * zoom))
   }
   function draw(newScene, player) {
     scene = newScene
+    world.scale.set(scene.location === 'home' ? 0.8 : 1)
     mapWidth = scene.location === 'detention' ? DETENTION_WIDTH : scene.location === 'society_village' ? SETTLEMENT_WIDTH : scene.location === 'society' ? SOCIETY_WIDTH : scene.location === 'river' ? RIVER_WIDTH : scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
     mapHeight = scene.location === 'detention' ? DETENTION_HEIGHT : scene.location === 'society_village' ? SETTLEMENT_HEIGHT : scene.location === 'society' ? SOCIETY_HEIGHT : scene.location === 'river' ? RIVER_HEIGHT : scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
     collision = createCollision(mapWidth, mapHeight)
@@ -112,7 +115,7 @@ export async function createWorld(host, onTick) {
       buildMansion({world,sprite,furniture,interior,mansionDecor})
       if (!scene.mansionRodTaken) { const rod = new Sprite(fishingRod); rod.x=103; rod.y=309; rod.width=24; rod.height=24; rod.zIndex=334; world.addChild(rod) }
     }
-    else if (scene.location === 'home') buildHome({ world, sprite, interior, furniture, dungeon, collision, scene, depthGroup })
+    else if (scene.location === 'home') buildHome({ world, sprite, interior, furniture, dungeon, collision, scene, depthGroup, homeDecor })
     else buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight })
     if (scene.location === 'mansion') {
       for (const rect of [...MANSION_WALLS, ...MANSION_FURNITURE, ...MANSION_DETAIL_COLLISIONS]) collision.addRect(rect)

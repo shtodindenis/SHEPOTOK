@@ -554,13 +554,13 @@ export function useGame() {
       ...(stashState.value === 'player' && !droppedItems.value.treasure ? [{ x: 148, y: 241, label: 'ИСПОЛЬЗОВАТЬ ВОДНИК', action: () => { unlockAchievement('inhalation'); fatal('waterpipe','waterpipe','curse') } }] : []),
       ...[
         [469, 78, 'ОСМОТРЕТЬ ХОЛОДИЛЬНИК', 'homeFridge'],
-        [342, 120, 'ОСМОТРЕТЬ СТУЛ', 'homeChair'], [445, 120, 'ОСМОТРЕТЬ СТУЛ', 'homeChair'],
+        [354, 120, 'ОСМОТРЕТЬ СТУЛ', 'homeChair'], [457, 120, 'ОСМОТРЕТЬ СТУЛ', 'homeChair'],
         [440, 234, 'ОСМОТРЕТЬ УНИТАЗ', 'homeToilet'], [355, 204, 'ОСМОТРЕТЬ ВАННУ', 'homeBath'],
         [450, 199, 'ОСМОТРЕТЬ РАКОВИНУ', 'homeSink'], [382, 70, 'ОСМОТРЕТЬ КУХНЮ', 'homeKitchen'],
-        [394, 126, 'ОСМОТРЕТЬ СТОЛ', 'homeTable'], [72, 201, 'ОСМОТРЕТЬ ДИВАН', 'homeSofa'],
-        [74, 258, 'ОСМОТРЕТЬ ТЕЛЕВИЗОР', 'homeTelevision'],
+        [406, 126, 'ОСМОТРЕТЬ СТОЛ', 'homeTable'], [85, 201, 'ОСМОТРЕТЬ ДИВАН', 'homeSofa'],
+        [86, 258, 'ОСМОТРЕТЬ ТЕЛЕВИЗОР', 'homeTelevision'],
         [160, 70, 'ОСМОТРЕТЬ ШКАФ', 'homeWardrobe'], [174, 204, 'ОСМОТРЕТЬ РАСТЕНИЕ', 'homePlant'],
-        [351, 258, 'ОСМОТРЕТЬ ПОЛОТЕНЦЕ', 'homeTowels'],
+        [466, 258, 'ОСМОТРЕТЬ ПОЛОТЕНЦЕ', 'homeTowels'],
       ].map(([x, y, label, id]) => ({ x, y, label, action: () => speak(id) })),
 
     ]

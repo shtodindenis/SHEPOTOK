@@ -1,0 +1,5 @@
+MetroCity - Free Top Down Interior Asset Pack
+Author: JIK-A-4
+Source: https://jik-a-4.itch.io/metrocity
+License: CC0 1.0 Universal (https://creativecommons.org/publicdomain/zero/1.0/)
+The game uses selected cropped sprites from the original sheets.
