@@ -67,7 +67,7 @@ export function writeSlot(index, data) {
 export function readEndings() {
   try {
     const stored = JSON.parse(localStorage.getItem(ENDINGS_KEY) || '[]')
-    return Array.isArray(stored) ? [...new Set(stored.filter(id => endings.some(item => item.id === id)))] : []
+    return Array.isArray(stored) ? [...new Set(stored.map(id => id === 'crime' ? 'prison' : id).filter(id => endings.some(item => item.id === id)))] : []
   } catch { return [] }
 }
 

@@ -58,7 +58,17 @@ export function buildHut({ world, sprite, interior, furniture, dungeon, sheet, c
   props.zIndex=250; world.addChild(props)
   const bones=sprite(caves,397,252,2,2,1.3,false); bones.zIndex=253
   if (!scene.witchMurder) character(380,91,true)
-  else { const body=new Graphics().ellipse(380,95,14,4).fill(0x713537).rect(368,88,18,6).fill(0x625865); body.zIndex=95; world.addChild(body) }
+  else {
+    const body=new Graphics().ellipse(382,102,27,9).fill(0x7c3034)
+      .rect(354,93,11,4).rect(356,99,10,4).fill(0x342b38)
+      .poly([363,89,386,89,393,100,365,104]).fill(0x59485e)
+      .rect(369,89,15,4).fill(0x8d7290).rect(372,96,11,2).fill(0x3f3548)
+      .rect(371,104,10,4).rect(384,101,9,4).fill(0xb69582)
+      .rect(394,93,5,7).fill(0xb44c4c)
+      .rect(404,95,10,9).fill(0xc19b83).rect(405,97,2,2).rect(410,97,2,2).fill(0x352d34)
+      .rect(402,91,15,4).fill(0x322a37).poly([404,91,410,83,415,91]).fill(0x46364c)
+    body.zIndex=109; world.addChild(body)
+  }
   const door=new Graphics().rect(102,284,36,20).fill(0x382a27).rect(105,287,30,17).fill(0x805a40).rect(119,288,2,15).fill(0x4a352e).rect(125,295,2,2).fill(0xd2aa6e)
   door.zIndex=304; world.addChild(door)
   const candles=new Graphics()

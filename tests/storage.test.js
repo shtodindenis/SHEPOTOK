@@ -9,6 +9,10 @@ test('successful episode result persists society membership independently of sav
   writeEpisodeResult(true); assert.deepEqual(readEpisodeResult(), {completed:true,societyMember:true})
   writeEpisodeResult(false); assert.deepEqual(readEpisodeResult(), {completed:true,societyMember:false})
 })
+test('old crime ending is preserved as the shared prison ending', () => {
+  data.clear(); writeEndings(['crime','prison'])
+  assert.deepEqual(readEndings(),['prison'])
+})
 test('older saves infer that the shovel was spent once the stash was dug', () => {
   data.clear(); writeSave({ stage: 1, location: 'forest', shovel: true, player: { x: 40, y: 224 } }); assert.equal(readSave().shovelUsed, false)
   writeSave({ stage: 2, location: 'home', shovel: true, player: { x: 160, y: 135 } }); assert.equal(readSave().shovelUsed, true)

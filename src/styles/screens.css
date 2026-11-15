@@ -43,3 +43,6 @@
 @keyframes evidence-bag-move{0%,35%{left:60%}75%,100%{left:45%}}
 @keyframes evidence-shovel-move{0%{transform:rotate(-20deg);left:-15%}40%{transform:rotate(-12deg);left:5%}75%{transform:rotate(-12deg);left:-8%}100%{transform:translate(32%,18%) rotate(48deg);left:-8%}}
 @media(prefers-reduced-motion:reduce){.evidence-bag,.evidence-shovel{animation:none}}
+.location-transition{position:absolute;inset:0;z-index:500;pointer-events:none;background:#111714;animation:location-reveal .5s ease-out forwards}
+@keyframes location-reveal{0%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.location-transition{animation-duration:.1s}}

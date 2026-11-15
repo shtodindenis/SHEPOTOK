@@ -10,6 +10,7 @@ import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSIO
 import { buildMansion, addMansionLighting } from './mansion.js'
 import { FOREST_WIDTH, FOREST_HEIGHT, stashAt } from './forestMap.js'
 import { DETENTION_WIDTH, DETENTION_HEIGHT, buildDetention } from './detention.js'
+import { drawPolice } from './police.js'
 
 const VIEW_WIDTH = 320, VIEW_HEIGHT = 192
 
@@ -146,6 +147,18 @@ export async function createWorld(host, onTick) {
     for (const [id, sprite] of dynamicItems) if (!ids.has(id)) { dynamicLayer.removeChild(sprite); sprite.destroy(); dynamicItems.delete(id) }
     for (const item of items) {
       let image = dynamicItems.get(item.id)
+      if (item.kind === 'police') {
+        if (!image) { image=drawPolice(); dynamicLayer.addChild(image); dynamicItems.set(item.id,image) }
+        image.x=Math.round(item.x); image.y=Math.round(item.y); image.zIndex=item.y+4; image.scale.x=item.facingLeft ? -1 : 1; continue
+      }
+      if (item.kind === 'shovel-swing') {
+        if (!image) { image=new Graphics(); dynamicLayer.addChild(image); dynamicItems.set(item.id,image) }
+        const angle=Math.atan2(item.targetY-item.y,item.targetX-item.x)+(1-item.progress)*1.5
+        const dx=Math.cos(angle), dy=Math.sin(angle), endX=dx*29, endY=dy*29
+        image.clear().moveTo(0,-4).lineTo(endX,endY-4).stroke({width:3,color:0xa87545})
+          .poly([endX-dy*5,endY-4+dx*5,endX+dy*5,endY-4-dx*5,endX+dx*7+dy*4,endY-4+dy*7-dx*4,endX+dx*7-dy*4,endY-4+dy*7+dx*4]).fill(0xb6bcb0)
+        image.x=item.x; image.y=item.y; image.zIndex=10000; continue
+      }
       if (item.kind === 'guard-zone') {
         if (!image) { image=new Graphics(); dynamicLayer.addChild(image); dynamicItems.set(item.id,image) }
         image.clear().circle(0,0,22).fill({color:item.alarm ? 0xe75950 : 0xe9d58c,alpha:.16}).circle(0,0,22).stroke({width:1,color:item.alarm ? 0xec7b6a : 0xe9d58c,alpha:.35})

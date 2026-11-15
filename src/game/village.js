@@ -1,4 +1,5 @@
 import { Graphics, Sprite } from 'pixi.js'
+import { drawPolice, drawPoliceCar } from './police.js'
 
 export const VILLAGE_WIDTH = 1152, VILLAGE_HEIGHT = 576
 export const VILLAGE = {
@@ -119,6 +120,13 @@ export function buildVillage({world, sprite, sheet, dungeon, collision, depthGro
   world.addChild(well)
   })
   depthGroup(VILLAGE.neighbor.y+4, () => sprite(dungeon,VILLAGE.neighbor.x-8,VILLAGE.neighbor.y-15,2,8,1,false))
+  if (scene.witchMurder === 'left' || scene.witchMurder === 'caught') {
+    const car=drawPoliceCar(); car.x=VILLAGE.hut.x-75; car.y=VILLAGE.hut.y+50; car.zIndex=car.y+10; world.addChild(car)
+    for (const [x,y] of [[VILLAGE.hut.x-27,VILLAGE.hut.y+7],[VILLAGE.hut.x+24,VILLAGE.hut.y+16]]) {
+      const officer=drawPolice(); officer.x=x; officer.y=y; officer.zIndex=y+4; world.addChild(officer)
+    }
+    depthGroup(VILLAGE.hut.y+23, () => sprite(dungeon,VILLAGE.hut.x+37,VILLAGE.hut.y+5,2,8,1.25,false))
+  }
   depthGroup(VILLAGE.sign.y, () => sprite(sheet,VILLAGE.sign.x-8,VILLAGE.sign.y-17,11,6,1,false))
   if (scene.arthouse?.phase === 'intro') {
     const mushroom=new Graphics().rect(1083,282,14,20).fill(0xf0e2ce).ellipse(1090,282,17,10).fill(0xb73d52)

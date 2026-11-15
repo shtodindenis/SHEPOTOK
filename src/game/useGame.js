@@ -1,6 +1,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { createUrgency, validUrgency, advanceUrgency, resolveUrgencyCheck } from './urgency.js'
 import { resolveDig } from './digging.js'
+import { createArrest, validArrest, advanceArrest } from './arrest.js'
 import { DETENTION_ENTRY, DETENTION_TAP, DETENTION_SHOVEL, DETENTION_EVIDENCE, DETENTION_EXIT, DETENTION_HIDING } from './detention.js'
 import { startDetention, validDetention, openCell, findDetentionShovel, chooseEvidence, canLeaveDetention } from './detentionState.js'
 import { eusebiusQuestions } from './eusebiusQuiz.js'
@@ -18,7 +19,7 @@ import { achievements } from './achievements.js'
 import { QUIZ_TIME_MS, quizQuestions, quizResult, validQuiz } from './wellQuiz.js'
 import { VILLAGE, OTHER_DOORS, MAYO_POINTS } from './village.js'
 import { createWorld } from './world.js'
-import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_MUSHROOMS, RIVER_PATH_ENTRY, FOREST_SIGN } from './forestMap.js'
+import { behindTree, STASH_SPOTS, stashAt, CAMP, FOREST_EAST, FOREST_WIDTH, FOREST_MUSHROOMS, RIVER_PATH_ENTRY, FOREST_SIGN } from './forestMap.js'
 import { SOCIETY_ENTRY, CAPTAIN, SETTLEMENT_FOREST, SETTLEMENT_HOUSE } from './societyLocation.js'
 import { QUEST_STATES, SEATS, CHAIR_CENTER, CHAIR_RADIUS, advanceChairs, advanceEscort, createChairs, createTail, sitDown, updateTail } from './societyQuest.js'
 import { MANSION_ENTRY, MANSION_ROD, MANSION_CHAIR, MANSION_STAIRS, MANSION_HIDING, FLOOR_HEIGHT, createMansionPatrol, advanceMansionPatrol } from './mansionLayout.js'
@@ -33,6 +34,7 @@ export function useGame() {
   const shovelPermission = ref(false), witchAngry = ref(false), wrongDigs = ref(0), wellQuizPassed = ref(false), pendingDiver = ref('')
   const urgency = ref(null), stamina = ref(STAMINA_MAX)
   const detention = ref(null), detentionChoice = ref(false)
+  const arrest = ref(null), transitionActive = ref(false)
   const detentionNotice = ref('')
   const eusebiusQuiz = ref(null), eusebiusQuestion = computed(() => eusebiusQuiz.value === null ? null : eusebiusQuestions[eusebiusQuiz.value])
   const arthouse = ref(null), firstMushroom = ref(0)
@@ -69,8 +71,8 @@ export function useGame() {
   writeAchievements(achievementUnlocked.value)
   const keys = new Set(), player = { x: 160, y: 135 }
   const audio = createAudio(() => sound.value)
-  let renderer, curseTimer, achievementTimer, arthouseWalkTimer, evidenceTimer, elapsed = 0, diveElapsed = 0, diveStart = { x: 0, y: 0 }, diveCause = 'jump', lastQuizSecond = 0, disposed = false
-  let tail = null, escort = null, patrol = null, carriedChair = false, chairGame = null, chairStarts = [], mansionHidden = null, mansionChair = { ...MANSION_CHAIR }
+  let renderer, curseTimer, achievementTimer, arthouseWalkTimer, evidenceTimer, transitionTimer, elapsed = 0, diveElapsed = 0, diveStart = { x: 0, y: 0 }, diveCause = 'jump', lastQuizSecond = 0, disposed = false
+  let tail = null, escort = null, patrol = null, carriedChair = false, chairGame = null, chairStarts = [], mansionHidden = null, mansionChair = { ...MANSION_CHAIR }, witchAttackElapsed = 0
   function syncMusic() {
     let track = null
     if (screen.value === 'title' || screen.value === 'gallery' || screen.value === 'achievements' || (screen.value === 'slots' && !slotFromGame.value)) track = 'menu'
@@ -82,6 +84,7 @@ export function useGame() {
   }
   watch([screen, location, questState, sound], syncMusic, { flush:'sync' })
   const questHint = computed(() => {
+    if (arrest.value) return 'ПОЛИЦЕЙСКИЙ ПОДХОДИТ К ТИГРАНУ'
     if (arthouse.value) return `ДЕНЬ ${arthouse.value.day} · ЭЙФОРИЯ ${arthouse.value.eaten}/${capacityForDay(arthouse.value.day)} · ДНЕВНАЯ НОРМА ${requiredMushrooms(arthouse.value.day)} · В ЛЕСУ ОСТАЛОСЬ ${16-arthouse.value.consumed.length}`
     if (location.value === 'detention' && detention.value) {
       const task=!detention.value.cellOpen ? 'ОСМОТРИ КАМЕРУ И НАЙДИ СПОСОБ ОТКРЫТЬ ДВЕРЬ' : detention.value.hiddenIndex != null ? 'ТЫ В УКРЫТИИ · E — ВЫЙТИ' : detention.value.alarm ? 'ТРЕВОГА! ИЗБЕГАЙ ОХРАНЫ И ДОБЕРИСЬ ДО ВЫХОДА' : detention.value.cause === 'mushrooms' ? 'НАЙДИ ВЫХОД И ИЗБЕГАЙ ОХРАНЫ' : detention.value.choice ? 'ДОБЕРИСЬ ДО ВЫХОДА, ИЗБЕГАЯ ОХРАНЫ' : 'НАЙДИ ЛОПАТУ И ВЕЩДОКИ · ПРЯЧЬСЯ ОТ ОХРАНЫ'
@@ -112,8 +115,12 @@ export function useGame() {
     if (location.value === 'forest') photo.value = renderer.forestPhoto()
     near.value = ''
   }
-  function saveData() { return { rulesVersion:2, pendingFatal:pendingFatal.value, witchMushroomsArrested:witchMushroomsArrested.value, witchAngryReason:witchAngryReason.value, photoConfiscated:photoConfiscated.value, ragConfiscated:ragConfiscated.value, witchMurder:witchMurder.value, stage: stage.value, location: location.value, detention: detention.value ? { ...detention.value } : null, arthouse:arthouse.value ? { ...arthouse.value } : null, collection:collection.value ? { ...collection.value } : null, riverRodGone:riverRodGone.value, mansionRodTaken:mansionRodTaken.value, mansionRodOwned:mansionRodOwned.value, cursedOnce:cursedOnce.value, firstMushroom:firstMushroom.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, mushroomUsed: mushroomUsed.value, wolfDefeated: wolfDefeated.value, inventorySlots: inventory.value, rodTaken: rodTaken.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 5, homeVersion: 1, hutVersion: 2, villageVersion: 1, societyVersion: 1, urgency: urgency.value, escort: escort ? { ...escort } : null, ragTaken: ragTaken.value, droppedRag: droppedRag.value, droppedItems: droppedItems.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
+  function saveData() { return { arrest:arrest.value ? { ...arrest.value } : null, rulesVersion:2, pendingFatal:pendingFatal.value, witchMushroomsArrested:witchMushroomsArrested.value, witchAngryReason:witchAngryReason.value, photoConfiscated:photoConfiscated.value, ragConfiscated:ragConfiscated.value, witchMurder:witchMurder.value, stage: stage.value, location: location.value, detention: detention.value ? { ...detention.value } : null, arthouse:arthouse.value ? { ...arthouse.value } : null, collection:collection.value ? { ...collection.value } : null, riverRodGone:riverRodGone.value, mansionRodTaken:mansionRodTaken.value, mansionRodOwned:mansionRodOwned.value, cursedOnce:cursedOnce.value, firstMushroom:firstMushroom.value, shovel: shovel.value, shovelUsed: shovelUsed.value, shovelPermission: shovelPermission.value, witchAngry: witchAngry.value, wrongDigs: wrongDigs.value, wellQuizPassed: wellQuizPassed.value, pendingDiver: pendingDiver.value, quiz: quiz.value ? { ...quiz.value } : null, note: note.value, trip: trip.value, mushroomUsed: mushroomUsed.value, wolfDefeated: wolfDefeated.value, inventorySlots: inventory.value, rodTaken: rodTaken.value, societyProgress: societyProgress.value, questState: questState.value, stashState: stashState.value, stashIndex: stashIndex.value, forestVersion: 5, homeVersion: 1, hutVersion: 2, villageVersion: 1, societyVersion: 1, urgency: urgency.value, escort: escort ? { ...escort } : null, ragTaken: ragTaken.value, droppedRag: droppedRag.value, droppedItems: droppedItems.value, bikeQuest: bikeQuest.value, bikeClean: bikeClean.value, selectedInventorySlot: selectedInventorySlot.value, player: { x: player.x, y: player.y } } }
   function save() { writeSave(saveData()) }
+  function flashTransition() {
+    transitionActive.value=false; clearTimeout(transitionTimer)
+    requestAnimationFrame(() => { if (disposed) return; transitionActive.value=true; transitionTimer=window.setTimeout(() => { transitionActive.value=false },500) })
+  }
   function unlockEnding(id) {
     if (!unlocked.value.includes(id)) unlocked.value = [...unlocked.value, id]
     writeEndings(unlocked.value)
@@ -129,6 +136,7 @@ export function useGame() {
     if (id === 'rupture') writeEndingCause(id,pendingFatal.value === 'secondCurse' ? 'second_curse' : 'first_curse_timeout')
     if (id === 'curse') writeEndingCause(id,'waterpipe')
     if (id === 'freedom' && arthouse.value?.death) writeEndingCause(id,arthouse.value.death)
+    if (id === 'prison') writeEndingCause(id,pendingFatal.value === 'crime' ? 'witch_murder' : 'escape_caught')
     pendingFatal.value=null; urgency.value = null; escort = null; endingKind.value = id; stage.value = 4; trip.value = false; choice.value = false; quiz.value = null; pendingDiver.value = ''; battle.stop(); unlockEnding(id); screen.value = 'ending'; save()
   }
   function fatal(kind, conversation, ending) { pendingFatal.value=kind; keys.clear(); save(); speak(conversation, () => finishEnding(ending)) }
@@ -181,12 +189,13 @@ export function useGame() {
   function start(restore = false, slotSave = null) {
     stamina.value=STAMINA_MAX; staminaExhausted=false
     const saved = slotSave || (restore ? readSave() : null)
+    arrest.value = saved && saved.location === 'forest' && validArrest(saved.arrest) ? { ...saved.arrest } : null
     detention.value = saved && validDetention(saved.detention) ? { quizIndex:0, quizCorrect:true, quizDone:false, ...saved.detention } : null; detentionChoice.value = false; detentionNotice.value=''; detentionHidden = Number.isInteger(detention.value?.hiddenIndex) ? DETENTION_HIDING[detention.value.hiddenIndex] || null : null; eusebiusQuiz.value = null
     arthouse.value = saved && validArthouse(saved.arthouse) ? { ...saved.arthouse } : null; firstMushroom.value = Number.isInteger(saved?.firstMushroom) && saved.firstMushroom >= 0 && saved.firstMushroom < FOREST_MUSHROOMS.length ? saved.firstMushroom : 0
     caughtFish.value = null
     collection.value = saved && ['witch','captain'].includes(saved.collection?.giver) && Array.isArray(saved.collection.collected) ? { ...saved.collection, collected:[...new Set(saved.collection.collected.filter(i => Number.isInteger(i) && i >= 0 && i < FOREST_MUSHROOMS.length))].slice(0,5), fish:Array.isArray(saved.collection.fish) ? saved.collection.fish.filter(kind => ['crucian','perch','roach'].includes(kind)) : Array(Math.max(0,Math.min(3,Math.floor(Number(saved.collection.crucians)||0)))).fill('crucian'), basket:!!saved.collection.basket, bucket:!!saved.collection.bucket, arrested:!!saved.collection.arrested, crucians:Math.max(0,Number(saved.collection.crucians)||0) } : null
     riverRodGone.value = !!(saved?.riverRodGone ?? saved?.rodTaken); mansionRodTaken.value = !!saved?.mansionRodTaken; mansionRodOwned.value=!!saved?.mansionRodOwned; cursedOnce.value = !!saved?.cursedOnce
-    witchMurder.value = ['inside','outside','left'].includes(saved?.witchMurder) ? saved.witchMurder : null
+    witchMurder.value = saved?.witchMurder === 'striking' ? 'inside' : ['inside','outside','left','caught'].includes(saved?.witchMurder) ? saved.witchMurder : null
     witchAngryReason.value = ['theft','lost_cannabis'].includes(saved?.witchAngryReason) ? saved.witchAngryReason : null; photoConfiscated.value=!!saved?.photoConfiscated; ragConfiscated.value=!!saved?.ragConfiscated
     witchMushroomsArrested.value=!!saved?.witchMushroomsArrested || !!(saved?.collection?.giver === 'witch' && saved.collection.arrested)
     pendingFatal.value=['wolf','prison','secondCurse','waterpipe','crime'].includes(saved?.pendingFatal) ? saved.pendingFatal : null
@@ -258,16 +267,17 @@ export function useGame() {
     screen.value = 'game'; drawScene()
     if (pendingDiver.value) beginDive(pendingDiver.value)
     else if (pendingFatal.value) {
-      const pending={wolf:['wolfFail','wolf'],prison:['detentionCaught','prison'],secondCurse:['secondCurse','rupture'],waterpipe:['waterpipe','curse'],crime:['witchCrimeCaught','crime']}[pendingFatal.value]
+      const pending={wolf:['wolfFail','wolf'],prison:['detentionCaught','prison'],secondCurse:['secondCurse','rupture'],waterpipe:['waterpipe','curse'],crime:['witchCrimeCaught','prison']}[pendingFatal.value]
       speak(pending[0],()=>finishEnding(pending[1]))
     }
+    else if (arrest.value?.phase === 'dialog') showArrestDialog()
     else if (arthouse.value?.phase === 'intro') speak('arthouseIntro', startArthouseWalk)
     else if (arthouse.value?.death) speak(arthouse.value.death === 'overdose' ? 'arthouseOverdose' : 'arthouseExhaustion', () => finishEnding('freedom'))
     else if (questState.value === 'escort_hut' && location.value === 'hut') escortReward()
     else if (!saved) speak('intro')
   }
   function openSlots(mode) {
-    if (urgency.value) return
+    if (urgency.value || arrest.value) return
     slotMode.value = mode; slotFromGame.value = screen.value === 'game'; slotNotice.value = ''; slots.value = readSlots(); keys.clear(); screen.value = 'slots'
   }
   function closeSlots() {
@@ -284,7 +294,7 @@ export function useGame() {
     }
   }
   function openMenu() {
-    if (urgency.value) return
+    if (urgency.value || arrest.value) return
     fishing.value = null
     if (questState.value === 'tail') { questState.value = 'tail_ready'; location.value = 'forest'; player.x = FOREST_EAST.x-30; player.y = FOREST_EAST.y; tail = null }
     if (questState.value === 'heist') { questState.value = 'heist_ready'; location.value = 'village'; player.x = VILLAGE.mansion.x; player.y = VILLAGE.mansion.y; carriedChair = false }
@@ -296,7 +306,7 @@ export function useGame() {
     const origin = location.value
     if (origin === 'hut' && dest === 'village' && witchMurder.value === 'inside') witchMurder.value = 'outside'
     fishing.value = null
-    location.value = dest; photoOpen.value = false; player.x = x; player.y = y; drawScene(); save(); audio.beep(200, .1)
+    location.value = dest; photoOpen.value = false; player.x = x; player.y = y; drawScene(); flashTransition(); save(); audio.beep(200, .1)
     if (origin === 'forest' && dest === 'village' && questState.value === 'escort_forest') {
       questState.value='escort_village'; escort={ x:VILLAGE.forest.x-20, y:VILLAGE.forest.y, waypoint:0 }; save()
     }
@@ -353,13 +363,13 @@ export function useGame() {
     } else if (result === 'next') { syncMusic(); save() }
   }
   function selectInventorySlot(index) {
-    if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || fishing.value || urgency.value || questState.value.startsWith('escort_') || index < 0 || index >= 6) return
+    if (screen.value !== 'game' || arrest.value || dialog.value || choice.value || quiz.value || photoOpen.value || fishing.value || urgency.value || questState.value.startsWith('escort_') || index < 0 || index >= 6) return
     selectedInventorySlot.value = selectedInventorySlot.value === index ? -1 : index; save()
   }
   function dropItem() {
     if (fishing.value) { retrieveRod(); return }
     if (location.value === 'mansion' && carriedChair && screen.value === 'game' && !dialog.value && !choice.value && !quiz.value && !photoOpen.value) { mansionChair={x:player.x,y:player.y}; carriedChair=false; save(); return }
-    if (screen.value !== 'game' || location.value === 'detention' || dialog.value || choice.value || detentionChoice.value || quiz.value || photoOpen.value || urgency.value || questState.value.startsWith('escort_') || !renderer) return
+    if (screen.value !== 'game' || arrest.value || location.value === 'detention' || dialog.value || choice.value || detentionChoice.value || quiz.value || photoOpen.value || urgency.value || questState.value.startsWith('escort_') || !renderer) return
     const kind=inventory.value[selectedInventorySlot.value]
     if (!kind) return
     if (kind === 'basket' || kind === 'bucket') return
@@ -404,7 +414,7 @@ export function useGame() {
   function collectMushroom(index) {
     if (!collection.value?.basket || collection.value.collected.includes(index) || collection.value.collected.length >= 5) return
     collection.value.collected.push(index)
-    if (collection.value.giver === 'witch' && collection.value.collected.length === 5 && !collection.value.arrested) { beginDetention('mushrooms'); return }
+    if (collection.value.giver === 'witch' && collection.value.collected.length === 5 && !collection.value.arrested) { beginArrest('mushrooms'); return }
     drawScene(); save(); speak('mushroomCollected')
   }
   function resolveFish(keep) {
@@ -416,7 +426,17 @@ export function useGame() {
     }
     caughtFish.value = null; save(); speak(keep ? 'fishKept' : 'fishReleased')
   }
+  function beginArrest(cause) {
+    arrest.value=createArrest(cause,player,FOREST_WIDTH); keys.clear(); save()
+  }
+  function showArrestDialog() {
+    if (!arrest.value) return
+    renderer?.setActors([{id:'arresting-police',kind:'police',x:arrest.value.x,y:arrest.value.y,facingLeft:arrest.value.x>player.x}])
+    const cause=arrest.value.cause
+    speak(cause === 'cannabis' ? 'arrestCannabis' : 'arrestMushrooms', () => beginDetention(cause))
+  }
   function beginDetention(cause) {
+    arrest.value=null
     detention.value = startDetention(cause); detentionHidden = null
     // Only possessions on the player are confiscated; objects already dropped remain where they were.
     if (ragTaken.value) ragConfiscated.value = true
@@ -430,7 +450,7 @@ export function useGame() {
     selectedInventorySlot.value = -1
     if (cause === 'cannabis') stashState.value = 'evidence'
     location.value = 'detention'; player.x = DETENTION_ENTRY.x; player.y = DETENTION_ENTRY.y
-    keys.clear(); drawScene(); save(); speak(cause === 'cannabis' ? 'arrestCannabis' : 'arrestMushrooms', () => speak(cause === 'cannabis' ? 'detentionIntro' : 'detentionMushrooms'))
+    keys.clear(); drawScene(); flashTransition(); save(); speak(cause === 'cannabis' ? 'detentionIntro' : 'detentionMushrooms')
   }
   function chooseDetentionEvidence(value) {
     if (!detention.value) return
@@ -609,15 +629,16 @@ export function useGame() {
   function interact() {
     if (screen.value !== 'game' || choice.value || detentionChoice.value || caughtFish.value || eusebiusQuiz.value !== null || quiz.value || photoOpen.value || fishing.value || urgency.value?.check) return
     if (dialog.value) { nextDialog(); return }
+    if (arrest.value) return
     const item=closest()
     if (item) { audio.beep(470); item.action() }
   }
   function useItem() {
-    if (screen.value !== 'game' || dialog.value || choice.value || quiz.value || photoOpen.value || urgency.value || questState.value.startsWith('escort_')) return
+    if (screen.value !== 'game' || arrest.value || dialog.value || choice.value || quiz.value || photoOpen.value || urgency.value || questState.value.startsWith('escort_')) return
     const item=inventory.value[selectedInventorySlot.value]
     if (item === 'photo') togglePhoto()
     else if (item === 'shovel' && location.value === 'hut' && !witchMurder.value && Math.hypot(player.x-238,player.y-78)<28) {
-      witchMurder.value='inside'; breakShovel(); drawScene(); speak('witchKilled')
+      witchMurder.value='striking'; breakShovel(); keys.clear(); witchAttackElapsed=0; screen.value='witch_attack'
     }
     else if (item === 'shovel') dig()
     else if (item === 'rag') speak('ragUse')
@@ -632,12 +653,13 @@ export function useGame() {
   }
   function dig() {
     if (screen.value !== 'game' || dialog.value || choice.value || questState.value === 'tail' || questState.value.startsWith('escort_') || location.value !== 'forest' || inventory.value[selectedInventorySlot.value] !== 'shovel' || !shovel.value || shovelUsed.value) return
-    audio.beep(150, .12)
-    const result = resolveDig({ permission: shovelPermission.value && witchAngryReason.value !== 'theft', photo: note.value, stage: stage.value, stashState: stashState.value, distance: Math.hypot(player.x-stashAt(stashIndex.value).x, player.y-stashAt(stashIndex.value).y), wrongDigs: wrongDigs.value })
-    if (result.outcome === 'missing') speak('stashMissing')
+    const result = resolveDig({ permission: shovelPermission.value && witchAngryReason.value !== 'theft', photo: note.value, stage: stage.value, stashState: stashState.value, distance: Math.hypot(player.x-stashAt(stashIndex.value).x, player.y-stashAt(stashIndex.value).y), wrongDigs: wrongDigs.value, tripping:trip.value || !!arthouse.value })
+    if (result.outcome !== 'tripping') audio.beep(150, .12)
+    if (result.outcome === 'tripping') speak('digTripping')
+    else if (result.outcome === 'missing') speak('stashMissing')
     else if (result.outcome === 'found') {
       stage.value = 2; stashState.value = 'player'
-      breakShovel(); beginDetention('cannabis')
+      breakShovel(); beginArrest('cannabis')
     } else if (result.outcome === 'miss') {
       wrongDigs.value = result.wrongDigs
       if (wrongDigs.value === 5) unlockAchievement('missed_digs')
@@ -647,6 +669,7 @@ export function useGame() {
   function onKey(event) {
     const k = event.key.toLowerCase(), direction = directionFromEvent(event)
     if (direction || [' ', 'enter', 'e', 'у', 'q', 'й', 'r', 'к', 'shift'].includes(k)) event.preventDefault()
+    if (arrest.value) { if (dialog.value && !event.repeat && ['enter',' ','e','у'].includes(k)) nextDialog(); return }
     if (caughtFish.value) { if (k === '1') resolveFish(true); else if (k === '2') resolveFish(false); return }
     if (eusebiusQuiz.value !== null) { if (/^[1-4]$/.test(k) && !event.repeat) answerEusebius(Number(k)-1); return }
     if (screen.value === 'ambulance') { if (['enter',' ','e','у'].includes(k) && !event.repeat) finishAmbulance(); return }
@@ -697,7 +720,7 @@ export function useGame() {
       const state = detention.value
       if (state.cellOpen && player.y < 152 && Number.isFinite(state.cellRemaining)) {
         state.cellRemaining = Math.max(0, state.cellRemaining-Math.min(delta,50))
-        actors.push({id:'detention-duty',x:122,y:136,col:4})
+        actors.push({id:'detention-duty',kind:'police',x:122,y:136})
         if (state.cellRemaining === 0) { state.cellOpen=false; drawScene(); save(); speak('detentionDoorClosed'); return }
       }
       state.guardTime += Math.min(delta, 50) * (state.alarm ? 1.5 : 1)
@@ -725,7 +748,7 @@ export function useGame() {
           if (distance) renderer.movePoint(guard,dx/distance*step,dy/distance*step)
         }
       }
-      guards.forEach((guard, i) => { actors.push({id:`detention-zone-${i}`,kind:'guard-zone',...guard,alarm:state.alarm}); actors.push({ id:`detention-guard-${i}`, ...guard, col:4 }) })
+      guards.forEach((guard, i) => { actors.push({id:`detention-zone-${i}`,kind:'guard-zone',...guard,alarm:state.alarm}); actors.push({ id:`detention-guard-${i}`, kind:'police', ...guard }) })
       if (state.cellOpen && !detentionHidden && guards.some(g => Math.hypot(g.x-player.x,g.y-player.y) < 20 && renderer.canSee(g,player))) {
         fatal('prison','detentionCaught','prison'); return
       }
@@ -803,15 +826,26 @@ export function useGame() {
       actors.push({id:'bobber',kind:'bobber',...point,fromX:player.x,fromY:player.y,biting:f.phase==='bite',time:f.elapsed})
     }
     if (droppedRag.value?.location === location.value) actors.push({ id:'dropped-rag', kind:'rag', ...droppedRag.value })
-    if (location.value === 'village' && witchMurder.value === 'left') {
-      actors.push({id:'crime-police',x:VILLAGE.hut.x-25,y:VILLAGE.hut.y+10,col:4})
-      actors.push({id:'crime-neighbor',x:VILLAGE.hut.x+25,y:VILLAGE.hut.y+10,col:2})
-    }
     for (const [kind, point] of Object.entries(droppedItems.value)) if (point.location === location.value) actors.push({ id:`dropped-${kind}`, kind:`dropped-${kind}`, ...point })
     renderer.setFishingPose(!!fishing.value)
     renderer.setActors(actors)
   }
   function update(ticker) {
+    if (screen.value === 'witch_attack' && renderer) {
+      witchAttackElapsed += Math.min(ticker.deltaMS,50)
+      const progress=Math.min(1,witchAttackElapsed/700)
+      renderer.setActors([{id:'shovel-swing',kind:'shovel-swing',x:player.x,y:player.y,targetX:238,targetY:78,progress}])
+      if (progress >= 1) { witchMurder.value='inside'; screen.value='game'; drawScene(); save(); audio.beep(110,.15); speak('witchKilled') }
+      return
+    }
+    if (screen.value === 'game' && arrest.value && renderer) {
+      if (!dialog.value && arrest.value.phase === 'approach') {
+        const arrived=advanceArrest(arrest.value,player,ticker.deltaMS)
+        renderer.setActors([{id:'arresting-police',kind:'police',x:arrest.value.x,y:arrest.value.y,facingLeft:arrest.value.x>player.x}])
+        if (arrived) { save(); showArrestDialog() }
+      }
+      return
+    }
     if (screen.value === 'battle') { battle.update(ticker.deltaMS); return }
     if (screen.value === 'diving' && renderer) {
       diveElapsed += ticker.deltaMS
@@ -855,9 +889,9 @@ export function useGame() {
     dx = moving ? dx / length * speed : 0; dy = moving ? dy / length * speed : 0
     const beforeX=player.x, beforeY=player.y
     elapsed += ticker.deltaTime; renderer.move(player, dx, dy, elapsed, left)
-    if (location.value === 'village' && witchMurder.value === 'outside' && Math.hypot(player.x-VILLAGE.hut.x,player.y-VILLAGE.hut.y)>120) { witchMurder.value='left'; save() }
+    if (location.value === 'village' && witchMurder.value === 'outside' && Math.hypot(player.x-VILLAGE.hut.x,player.y-VILLAGE.hut.y)>120) { witchMurder.value='left'; drawScene(); save() }
     if (location.value === 'village' && witchMurder.value === 'left' && Math.hypot(player.x-VILLAGE.hut.x,player.y-VILLAGE.hut.y)<35) {
-      witchMurder.value='caught'; unlockAchievement('crime'); fatal('crime','witchCrimeCaught','crime'); return
+      witchMurder.value='caught'; unlockAchievement('crime'); fatal('crime','witchCrimeCaught','prison'); return
     }
     const staminaState=updateStamina(stamina.value, staminaExhausted, sprinting && (player.x !== beforeX || player.y !== beforeY), ticker.deltaMS)
     stamina.value=staminaState.value; staminaExhausted=staminaState.exhausted
@@ -866,7 +900,7 @@ export function useGame() {
     updateQuest(ticker.deltaMS)
     near.value = closest()?.label || ''
   }
-  function press(key) { if (!urgency.value?.check) keys.add(key) }
+  function press(key) { if (!arrest.value && !urgency.value?.check) keys.add(key) }
   function release(key) { keys.delete(key) }
   function togglePhoto() { if (note.value && !dialog.value && !choice.value && !quiz.value && !urgency.value && (photoOpen.value || inventory.value[selectedInventorySlot.value] === 'photo')) { keys.clear(); photoOpen.value = !photoOpen.value } }
   const onBlur = () => { keys.clear(); fishingPress(false) }
@@ -874,13 +908,13 @@ export function useGame() {
     window.addEventListener('mousedown', onMouseDown); window.addEventListener('mouseup', onMouseUp); window.addEventListener('pointerdown', audio.unlockMusic); window.addEventListener('keydown', audio.unlockMusic); syncMusic()
     const created = await createWorld(canvasHost.value, update)
     if (disposed) { created.destroy(); return }
-    renderer = created; drawScene()
+    renderer = created; drawScene(); if (arrest.value?.phase === 'dialog') renderer.setActors([{id:'arresting-police',kind:'police',x:arrest.value.x,y:arrest.value.y,facingLeft:arrest.value.x>player.x}])
     window.addEventListener('keydown', onKey); window.addEventListener('keyup', onUp); window.addEventListener('blur', onBlur)
   })
   onUnmounted(() => {
-    disposed = true; clearTimeout(curseTimer); clearTimeout(achievementTimer); clearTimeout(arthouseWalkTimer); clearTimeout(evidenceTimer); battle.stop(); audio.destroy(); renderer?.destroy()
+    disposed = true; clearTimeout(curseTimer); clearTimeout(achievementTimer); clearTimeout(arthouseWalkTimer); clearTimeout(evidenceTimer); clearTimeout(transitionTimer); battle.stop(); audio.destroy(); renderer?.destroy()
     window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', onBlur)
     window.removeEventListener('mousedown', onMouseDown); window.removeEventListener('mouseup', onMouseUp); window.removeEventListener('pointerdown', audio.unlockMusic); window.removeEventListener('keydown', audio.unlockMusic)
   })
-  return { stamina, dropItem, urgency, attemptUrgency, canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, arthouse, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle, detentionChoice, chooseDetentionEvidence, eusebiusQuiz, eusebiusQuestion, answerEusebius, caughtFish, resolveFish, finishAmbulance, finishSleep }
+  return { stamina, dropItem, urgency, attemptUrgency, canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, arthouse, transitionActive, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle, detentionChoice, chooseDetentionEvidence, eusebiusQuiz, eusebiusQuestion, answerEusebius, caughtFish, resolveFish, finishAmbulance, finishSleep }
 }

@@ -17,7 +17,7 @@ import ArthouseWalk from './components/ArthouseWalk.vue'
 import EvidenceScene from './components/EvidenceScene.vue'
 import { useGame } from './game/useGame.js'
 
-const { stamina, dropItem, urgency, attemptUrgency, canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, arthouse, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle, detentionChoice, chooseDetentionEvidence, eusebiusQuiz, eusebiusQuestion, answerEusebius, caughtFish, resolveFish, finishAmbulance, finishSleep } = useGame()
+const { stamina, dropItem, urgency, attemptUrgency, canvasHost, screen, location, dialog, near, sound, shovel, shovelUsed, note, inventory, selectedInventorySlot, selectInventorySlot, bikeHint, fishing, fishingPress, retrieveRod, photo, photoOpen, togglePhoto, useItem, trip, arthouse, transitionActive, endingKind, coords, choice, choiceIndex, questHint, endings, unlocked, achievements, achievementUnlocked, achievementToast, quiz, quizQuestion, quizSelected, quizSeconds, quizQuestions, answerQuiz, battle, slots, slotMode, slotNotice, slotFromGame, questState, openSlots, closeSlots, selectSlot, start, openMenu, interact, nextDialog, dig, chooseWell, press, release, startBattle, detentionChoice, chooseDetentionEvidence, eusebiusQuiz, eusebiusQuestion, answerEusebius, caughtFish, resolveFish, finishAmbulance, finishSleep } = useGame()
 const { hits, progress, direction } = battle
 </script>
 
@@ -34,6 +34,7 @@ const { hits, progress, direction } = battle
     <SleepScene v-else-if="screen === 'sleep'" @finish="finishSleep" />
     <ArthouseWalk v-else-if="screen === 'arthouse_walk'" />
     <EvidenceScene v-else-if="screen === 'evidence_scene'" />
+    <div v-else-if="screen === 'witch_attack'" aria-label="Тигран замахивается лопатой"></div>
     <div v-else-if="screen === 'ominous'" class="ominous" aria-hidden="true"></div>
     <div v-else-if="screen === 'scare'" class="scare" role="img" aria-label="Проклятие гадалки"><div class="scare-figure"></div></div>
     <EndingScreen v-else :ending="endings.find(item => item.id === endingKind)" @menu="screen = 'title'" />
@@ -43,5 +44,6 @@ const { hits, progress, direction } = battle
     <EusebiusQuiz v-if="screen === 'game' && eusebiusQuiz !== null" :question="eusebiusQuestion" :number="eusebiusQuiz + 1" @answer="answerEusebius" />
     <FishCatch v-if="screen === 'game' && caughtFish" :fish="caughtFish" @keep="resolveFish(true)" @release="resolveFish(false)" />
     <div v-if="achievementToast" class="achievement-toast" role="status"><strong>ДОСТИЖЕНИЕ ОТКРЫТО</strong>{{ achievementToast.title }}</div>
+    <div v-if="transitionActive" class="location-transition" aria-hidden="true"></div>
   </main>
 </template>
