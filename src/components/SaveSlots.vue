@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
-const props = defineProps({ mode: String, slots: Array, fromGame: Boolean, checkpoint: Boolean, notice: String })
+const props = defineProps({ mode: String, slots: { type: Array as () => ({ data: any; savedAt: number } | null)[], required: true }, fromGame: Boolean, checkpoint: Boolean, notice: String })
 const emit = defineEmits(['choose', 'back'])
 const confirm = ref(-1)
 watch(() => props.mode, () => { confirm.value = -1 })
-const places = {home:'Дом Тиграна',village:'Деревня',hut:'Дом гадалки',forest:'Лес',river:'Река',society:'Дом общества',society_village:'Поселение общества',mansion:'Особняк'}
+const places = {home:'Дом Тиграна',village:'Деревня',hut:'Дом гадалки',forest:'Лес',river:'Река',society:'Дом общества',society_village:'Поселение общества',mansion:'Особняк',detention:'СИЗО'}
 function date(value) { return new Date(value).toLocaleString('ru-RU', { day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit' }) }
 function description(save) {
   const q=save.questState

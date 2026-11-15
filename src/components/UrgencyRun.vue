@@ -1,6 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
-import { CHECK_DURATION } from '../game/urgency.js'
+import { CHECK_DURATION } from '../game/urgency.ts'
 const props=defineProps({ run:Object })
 const emit=defineEmits(['attempt'])
 const seconds=computed(()=>Math.ceil(props.run.remaining/1000))

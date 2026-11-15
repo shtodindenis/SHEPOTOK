@@ -1,5 +1,5 @@
-<script setup>
-defineProps({ question: Object, number: Number })
+<script setup lang="ts">
+defineProps({ question: { type: Object as () => { question: string; options: string[] }, required: true }, number: Number })
 defineEmits(['answer'])
 </script>
 <template>

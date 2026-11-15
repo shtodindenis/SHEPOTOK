@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "strict": true },
+  "include": [
+    "src/game/arrest.ts", "src/game/arthouse.ts", "src/game/camera.ts", "src/game/detentionState.ts",
+    "src/game/digging.ts", "src/game/eventListeners.ts", "src/game/fishing.ts", "src/game/inventory.ts",
+    "src/game/musicSelection.ts", "src/game/stamina.ts", "src/game/timing.ts", "src/game/urgency.ts",
+    "src/game/wellQuiz.ts", "src/game/gameSnapshot.ts", "src/stores/interface.ts", "src/stores/progress.ts",
+    "src/stores/session.ts", "src/stores/gallery.ts", "src/game/storage.ts", "src/game/useInventory.ts", "src/game/saveNormalization.ts", "src/game/hints.ts", "src/game/keyboard.ts", "src/game/skillCheck.ts", "src/game/dynamicActors.ts", "src/game/collision.ts", "src/game/audio.ts", "src/game/forestMap.ts", "src/game/societyQuest.ts", "src/game/mansionLayout.ts", "src/game/useQuestHint.ts", "src/game/worldBounds.ts", "src/game/rendererInitialization.ts"
+  ]
+}

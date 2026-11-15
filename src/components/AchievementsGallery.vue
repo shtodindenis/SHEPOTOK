@@ -1,5 +1,5 @@
-<script setup>
-defineProps({ achievements: Array, unlocked: Array })
+<script setup lang="ts">
+defineProps<{ achievements: { id: string; title: string; detail: string }[]; unlocked: string[] }>()
 defineEmits(['back'])
 </script>
 <template>

@@ -1,5 +1,5 @@
-<script setup>
-defineProps({ endings: Array, unlocked: Array })
+<script setup lang="ts">
+defineProps<{ endings: { id: string; title: string; detail: string }[]; unlocked: string[] }>()
 defineEmits(['back'])
 </script>
 

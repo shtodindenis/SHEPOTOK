@@ -1,5 +1,5 @@
-<script setup>
-import { HIT_COUNT, HIT_START, HIT_END } from '../game/skillCheck.js'
+<script setup lang="ts">
+import { HIT_COUNT, HIT_START, HIT_END } from '../game/skillCheck.ts'
 defineProps({ ready: Boolean, hits: Number, progress: Number, direction: Object })
 defineEmits(['start', 'attempt'])
 </script>
