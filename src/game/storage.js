@@ -4,15 +4,41 @@ import { achievements } from './achievements.js'
 const SAVE_KEY = 'shepotok-save'
 const ENDINGS_KEY = 'shepotok-endings'
 const ACHIEVEMENTS_KEY = 'shepotok-achievements'
+const EPISODE_RESULT_KEY = 'shepotok-episode-1-result'
+const ENDING_CAUSES_KEY = 'shepotok-ending-causes'
+
+export function writeEndingCause(id, cause) {
+  if (typeof id !== 'string' || typeof cause !== 'string') return
+  try {
+    const parsed=JSON.parse(localStorage.getItem(ENDING_CAUSES_KEY) || '{}')
+    const records=parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+    const causes=Array.isArray(records[id]) ? records[id].filter(value => typeof value === 'string') : []
+    records[id]=[...new Set([...causes,cause])]
+    localStorage.setItem(ENDING_CAUSES_KEY,JSON.stringify(records))
+  } catch { /* Gameplay continues without storage. */ }
+}
+
+export function writeEpisodeResult(member) {
+  try { localStorage.setItem(EPISODE_RESULT_KEY, JSON.stringify({ completed:true, societyMember:!!member })) } catch { /* Gameplay continues without storage. */ }
+}
+export function readEpisodeResult() {
+  try {
+    const value=JSON.parse(localStorage.getItem(EPISODE_RESULT_KEY))
+    return value?.completed === true && typeof value.societyMember === 'boolean' ? value : null
+  } catch { return null }
+}
 
 function validateSave(data) {
     if (!data || !Number.isInteger(data.stage) || data.stage < 0 || data.stage >= 4 ||
-        !['home', 'village', 'hut', 'forest', 'river', 'society', 'society_village', 'mansion'].includes(data.location) ||
+        !['home', 'village', 'hut', 'forest', 'river', 'society', 'society_village', 'mansion', 'detention'].includes(data.location) ||
         !Number.isFinite(data.player?.x) || !Number.isFinite(data.player?.y)) return null
+    // Before the new digging rules, a miss broke the shovel. If the player
+    // never ate a mushroom, they could not have spent it on the wolf instead.
+    const legacyMiss = data.rulesVersion !== 2 && data.stage === 1 && data.stashState !== 'witch' && data.shovel === true && data.shovelUsed === true && Number.isInteger(data.wrongDigs) && data.wrongDigs > 0 && !data.trip && !data.mushroomUsed && !data.wolfDefeated
     return {
       ...data,
       // Saves from before the shovel had a durability flag had already used it at stage 2.
-      shovelUsed: typeof data.shovelUsed === 'boolean' ? data.shovelUsed : data.stage >= 2,
+      shovelUsed: legacyMiss ? false : typeof data.shovelUsed === 'boolean' ? data.shovelUsed : data.stage >= 2,
       wolfDefeated: !!data.wolfDefeated,
     }
 }

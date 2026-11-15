@@ -1,12 +1,24 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readSave, writeSave, readEndings, writeEndings } from '../src/game/storage.js'
+import { readSave, writeSave, readEndings, writeEndings, readEpisodeResult, writeEpisodeResult } from '../src/game/storage.js'
 
 const data = new Map()
 globalThis.localStorage = { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) }
+test('successful episode result persists society membership independently of save slots', () => {
+  data.clear(); assert.equal(readEpisodeResult(),null)
+  writeEpisodeResult(true); assert.deepEqual(readEpisodeResult(), {completed:true,societyMember:true})
+  writeEpisodeResult(false); assert.deepEqual(readEpisodeResult(), {completed:true,societyMember:false})
+})
 test('older saves infer that the shovel was spent once the stash was dug', () => {
   data.clear(); writeSave({ stage: 1, location: 'forest', shovel: true, player: { x: 40, y: 224 } }); assert.equal(readSave().shovelUsed, false)
   writeSave({ stage: 2, location: 'home', shovel: true, player: { x: 160, y: 135 } }); assert.equal(readSave().shovelUsed, true)
+})
+test('a legacy shovel broken by an earlier miss is restored only when the wolf was impossible', () => {
+  data.clear()
+  const base={stage:1,location:'forest',player:{x:40,y:224},stashState:'buried',shovel:true,shovelUsed:true,wrongDigs:1}
+  writeSave(base); assert.equal(readSave().shovelUsed,false)
+  writeSave({...base,mushroomUsed:true}); assert.equal(readSave().shovelUsed,true)
+  writeSave({...base,rulesVersion:2}); assert.equal(readSave().shovelUsed,true)
 })
 test('new location and ending gallery survive a save roundtrip', () => {
   data.clear(); writeSave({ stage: 1, location: 'society', wolfDefeated: true, player: { x: 160, y: 151 } }); assert.equal(readSave().wolfDefeated, true)

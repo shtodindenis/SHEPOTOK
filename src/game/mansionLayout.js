@@ -1,6 +1,7 @@
 // Both floors share one coordinate system; all geometry and interaction points live here.
 export const MANSION_WIDTH = 768, MANSION_HEIGHT = 896, FLOOR_HEIGHT = 448
 export const MANSION_ENTRY = { x: 45, y: 224 }
+export const MANSION_ROD = { x:115, y:334 }
 export const MANSION_STAIRS = [{x:720,y:224},{x:720,y:672}]
 export const MANSION_CHAIR = { x: 684, y: 546 }
 const floorWalls = (o) => [

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createCollision } from '../src/game/collision.js'
-import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSION_DETAIL_COLLISIONS, MANSION_ENTRY, MANSION_CHAIR, MANSION_STAIRS, MANSION_HIDING, PATROL_ROUTE, createMansionPatrol, advanceMansionPatrol } from '../src/game/mansionLayout.js'
+import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSION_DETAIL_COLLISIONS, MANSION_ENTRY, MANSION_ROD, MANSION_CHAIR, MANSION_STAIRS, MANSION_HIDING, PATROL_ROUTE, createMansionPatrol, advanceMansionPatrol } from '../src/game/mansionLayout.js'
 const c=createCollision(MANSION_WIDTH,MANSION_HEIGHT)
 for(const item of [...MANSION_WALLS,...MANSION_FURNITURE,...MANSION_DETAIL_COLLISIONS]) c.addRect(item)
 function reachable(start) {
@@ -17,6 +17,7 @@ function reachable(start) {
 test('stairs, chair, and hiding places are reachable on both floors',()=>{
   const first=reachable(MANSION_ENTRY), second=reachable({x:680,y:672})
   assert.ok(first(MANSION_STAIRS[0])); assert.ok(second(MANSION_STAIRS[1])); assert.ok(second(MANSION_CHAIR))
+  assert.ok(first(MANSION_ROD, 20), 'mansion rod has no reachable approach')
   for(const p of MANSION_HIDING) assert.ok((p.y<448?first:second)(p,12),`${p.label} ${p.x},${p.y}`)
 })
 test('the witch can patrol both floors without entering walls',()=>{

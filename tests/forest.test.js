@@ -22,7 +22,7 @@ test('all seven tree caches are off the road, distant and reachable', () => {
   assert.equal(c.blocked(FOREST_SIGN.x,FOREST_SIGN.y-5),true)
   assert.ok(reachable(FOREST_SIGN,23), 'forest sign has no reachable approach')
   assert.equal(STASH_SPOTS.length,7)
-  assert.ok(FOREST_MUSHROOMS.length >= 3 && FOREST_MUSHROOMS.length <= 10)
+  assert.equal(FOREST_MUSHROOMS.length, 16)
   for (const mushroom of FOREST_MUSHROOMS) assert.ok(reachable({x:mushroom.x+8,y:mushroom.y+8},24), `unreachable mushroom at ${mushroom.x},${mushroom.y}`)
   for(const [index,spot] of STASH_SPOTS.entries()) {
     assert.ok(!FOREST_PATHS.some(path=>nearRoute(spot.x,spot.y,path,50)),`cache ${index} is too close to a path`)

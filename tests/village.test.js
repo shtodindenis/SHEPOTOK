@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createCollision } from '../src/game/collision.js'
-import { VILLAGE, OTHER_DOORS, VILLAGE_SOLIDS, VILLAGE_WIDTH, VILLAGE_HEIGHT } from '../src/game/village.js'
+import { VILLAGE, OTHER_DOORS, MAYO_POINTS, VILLAGE_SOLIDS, VILLAGE_WIDTH, VILLAGE_HEIGHT } from '../src/game/village.js'
 
 test('all village interactions are reachable from home with the actual collision map', () => {
   const collision = createCollision(VILLAGE_WIDTH,VILLAGE_HEIGHT)
@@ -21,5 +21,8 @@ test('all village interactions are reachable from home with the actual collision
   }
   for(const [name, point] of Object.entries({...VILLAGE, ...Object.fromEntries(OTHER_DOORS.map((p,i)=>[`house${i}`,p]))})) {
     assert.ok(queue.some(([x,y])=>Math.hypot(x-point.x,y-point.y)<23), `${name} has no reachable approach`)
+  }
+  for (const [i, point] of MAYO_POINTS.entries()) {
+    assert.ok(queue.some(([x,y]) => Math.hypot(x-point.x,y-point.y)<23 && Math.hypot(x-point.x,y-point.y)<Math.hypot(x-VILLAGE.home.x,y-VILLAGE.home.y)), `mayonnaise ${i} has no reachable approach`)
   }
 })

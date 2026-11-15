@@ -32,7 +32,7 @@ function buildRoom(hut = false) {
   }
 }
 function buildForest() {
-  const ground = new Graphics().rect(0,0,mapWidth,mapHeight).fill(0x719f60)
+  const ground = new Graphics().rect(0,0,mapWidth,mapHeight).fill(scene.arthouse ? 0x7e5d9b : 0x719f60)
   const road=(points,width,color) => {
     ground.moveTo(points[0].x,points[0].y)
     for(let i=1;i<points.length;i++) {
@@ -63,6 +63,12 @@ function buildForest() {
     const x=t.x+8, y=t.y+32, scale=t.scale, left=Math.round(x-8*scale), top=Math.round(y-32*scale)
     world.addChild(new Graphics().ellipse(x+2,y-3,12*scale,4*scale).fill({color:0x314d34,alpha:.24}))
     depthGroup(y-2*scale, () => {
+      if (scene.arthouse?.day >= 2) {
+        const mushroom = new Graphics().rect(x-4*scale,y-19*scale,8*scale,17*scale).fill(0xe8d8c2)
+          .ellipse(x,y-19*scale,12*scale,8*scale).fill(0xb94958)
+          .circle(x-5*scale,y-21*scale,2*scale).circle(x+4*scale,y-23*scale,2*scale).fill(0xf2e5c8)
+        world.addChild(mushroom); return
+      }
       for(const [row,offset] of [[0,0],[1,16]]) {
         const tile=sprite(sheet,left,top+offset*scale,t.col,row,scale,false); tile.tint=t.tint
         if(t.flip) { tile.scale.x=-scale; tile.x=left+16*scale }
@@ -79,11 +85,16 @@ function buildForest() {
     collision.addRect({x:x-7,y:y-20,w:14,h:16})
   }
   // Shadows and small footprints make the props solid without blocking whole trails.
-  for(const [kind,objects] of [['mushroom',FOREST_MUSHROOMS],['log',FOREST_LOGS]]) for(const {x,y} of objects) {
+  for(const [kind,objects] of [['mushroom',FOREST_MUSHROOMS],['log',FOREST_LOGS]]) for(const [i,{x,y}] of objects.entries()) {
+    if (kind === 'mushroom' && (scene.arthouse?.consumed.includes(i) || scene.collection?.collected.includes(i) || (!scene.arthouse && scene.mushroomUsed && scene.firstMushroom === i))) continue
     world.addChild(new Graphics().ellipse(x+8,y+14,8,3).fill({color:0x304a32,alpha:.25}))
     objectSprite(sheet,x,y,kind==='mushroom'?5:10,kind==='mushroom'?2:8,1,false)
+    if (kind === 'mushroom' && scene.arthouse) world.addChild(new Graphics().circle(x+8,y+8,13).fill({color:0xf4b3ff,alpha:.12}))
   }
-  for(const rect of FOREST_PROP_SOLIDS) collision.addRect(rect)
+  for(const [i,rect] of FOREST_PROP_SOLIDS.entries()) {
+    if (i < FOREST_MUSHROOMS.length && (scene.arthouse?.consumed.includes(i) || scene.collection?.collected.includes(i) || (!scene.arthouse && scene.mushroomUsed && scene.firstMushroom === i))) continue
+    collision.addRect(rect)
+  }
   campTent(CAMP.x-36,CAMP.y-55)
   objectSprite(dungeon,CAMP.x+30,CAMP.y-17,6,9,1.4,false)
   objectSprite(dungeon,CAMP.x,CAMP.y-8,5,9,1.1,false)

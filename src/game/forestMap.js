@@ -51,6 +51,8 @@ export const FOREST_SOLIDS = forestTrees.map(t=>({x:t.x+8-3.5*t.scale,y:t.y+32-1
 export const FOREST_MUSHROOMS = [
   {x:180,y:184}, {x:282,y:277}, {x:365,y:238}, {x:478,y:244},
   {x:554,y:312}, {x:654,y:385}, {x:748,y:180}, {x:865,y:245},
+  {x:396,y:126}, {x:340,y:154}, {x:732,y:210}, {x:788,y:210},
+  {x:872,y:266}, {x:872,y:322}, {x:872,y:378}, {x:872,y:490},
 ]
 export const FOREST_LOGS = []
 for(let y=55;y<600;y+=59) for(let x=35;x<930;x+=71) {

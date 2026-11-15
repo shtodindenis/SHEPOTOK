@@ -1,4 +1,4 @@
-export const QUEST_STATES = ['none','tail_ready','tail','escort_forest','escort_village','escort_hut','report1','heist_ready','heist','report2','chairs','done']
+export const QUEST_STATES = ['none','tail_ready','tail','escort_forest','escort_village','escort_hut','report1','heist_ready','heist','report2','chairs','done','rejected','rod_search']
 import { stashRoute } from './forestMap.js'
 const RETURN_ROUTE = [{x:512,y:352},{x:512,y:208},{x:336,y:208},{x:336,y:320},{x:160,y:320},{x:160,y:224},{x:35,y:224}]
 // The chairs and dancers share the carpet in Captain Cook's room.
@@ -6,7 +6,7 @@ export const CHAIR_CENTER = {x:625,y:155}
 export const CHAIR_RADIUS = {x:55,y:27}
 export const SEATS = [-24,0,24].map(dx => ({x:CHAIR_CENTER.x+dx,y:CHAIR_CENTER.y}))
 export function createTail(mode = 'buried', stashIndex = 0) {
-  const approach=[{x:704,y:224},{x:704,y:352},{x:512,y:352}], branch=stashRoute(stashIndex)
+  const approach=[{x:704,y:224},{x:704,y:352},{x:512,y:352}], branch=mode === 'mushrooms' ? [{x:512,y:240}] : stashRoute(stashIndex)
   const route=mode==='carrying' ? [...approach,...RETURN_ROUTE.slice(1)] : [...approach,...branch,...branch.slice(0,-1).reverse(),...RETURN_ROUTE]
   return { x:850, y:224, waypoint:0, digWaypoint:approach.length+branch.length, elapsed:0, digging:0, dug:mode === 'carrying', lost:0, mode, route }
 }

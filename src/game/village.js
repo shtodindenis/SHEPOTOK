@@ -10,6 +10,7 @@ export const HOUSES = [
   {x:100,y:382}, {x:335,y:390}, {x:580,y:385}, {x:870,y:380,scale:2,kind:'mansion'},
 ]
 export const OTHER_DOORS = HOUSES.filter(h => !h.kind).map(h => ({x:h.x+56,y:h.y+80}))
+export const MAYO_POINTS = HOUSES.map(h => ({x:h.x+48*(h.scale || 1.5)+9,y:h.y+48*(h.scale || 1.5)-12}))
 const TREE_POSITIONS = [[8,40],[163,30],[360,38],[454,52],[660,22],[721,82],[916,40],[1040,61],[1100,128],
   [20,195],[195,205],[332,178],[660,179],[986,189],[1065,212],
   [20,360],[237,360],[284,482],[475,390],[750,378],[795,488],[1040,410],[1100,480],[25,510],[555,510],[970,520]]
@@ -30,7 +31,7 @@ export const VILLAGE_SOLIDS = [
 
 
 export function buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene}) {
-  const ground = new Graphics().rect(0,0,VILLAGE_WIDTH,VILLAGE_HEIGHT).fill(0x7cb968)
+  const ground = new Graphics().rect(0,0,VILLAGE_WIDTH,VILLAGE_HEIGHT).fill(scene.arthouse ? 0x8761a2 : 0x7cb968)
   // Broad, meandering lane with narrower paths leading to each doorstep.
   const road = (points, width, color) => {
     ground.moveTo(points[0][0],points[0][1])
@@ -59,11 +60,27 @@ export function buildVillage({world, sprite, sheet, dungeon, collision, depthGro
   for(let x=30;x<1120;x+=41) { const y=301+Math.round(7*Math.sin(x/85)); detail.rect(x,y,3,1).fill({color:0x9e7857,alpha:.4}); detail.rect(x+10,y+9,2,1).fill({color:0xf0cda1,alpha:.5}) }
   world.addChild(detail)
   // Houses share the same scale and have a solid footprint and visible door.
-  for (const h of HOUSES) {
+  for (const [houseIndex,h] of HOUSES.entries()) {
     const scale=h.scale || 1.5, size=16*scale
     const shadow=new Graphics().ellipse(h.x+size*1.55,h.y+size*3+3,size*1.7,7).fill({color:0x334f3b,alpha:.18})
     world.addChild(shadow)
     depthGroup(h.y+size*3, () => {
+    if (scene.arthouse?.day >= 3) {
+      const pot = new Graphics().ellipse(h.x+size*1.5,h.y+size*2.85,size*1.45,size*.5).fill(0x333033)
+        .rect(h.x+size*.15,h.y+size*.9,size*2.7,size*1.8).fill(0x514843)
+        .rect(h.x+size*.3,h.y+size*1.05,size*.18,size*1.45).fill(0x78675a)
+        .rect(h.x+size*2.45,h.y+size*1.05,size*.18,size*1.45).fill(0x3b3533)
+        .ellipse(h.x+size*1.5,h.y+size*.9,size*1.35,size*.48).fill(0x302d2e)
+        .ellipse(h.x+size*1.5,h.y+size*.88,size*1.15,size*.32).fill(0x9a3d3a)
+        .ellipse(h.x+size*1.1,h.y+size*.83,size*.2,size*.07).fill(0xc36345)
+        .ellipse(h.x+size*1.85,h.y+size*.92,size*.15,size*.06).fill(0xdd9566)
+        .rect(h.x+size*.4,h.y+size*.86,size*.12,size*.07).fill(0x7e9c4d)
+        .rect(h.x+size*2,h.y+size*.8,size*.1,size*.06).fill(0x83a755)
+      const mayo=scene.arthouse.mayo[houseIndex] || 0
+      if (mayo) pot.ellipse(h.x+size*1.5,h.y+size*.88,size*(.2+mayo*.19),size*(.05+mayo*.04)).fill(0xf2ead1)
+      if (h.kind === 'home') pot.rect(h.x+size*1.9,h.y+size*2,size*.6,size*.85).fill(0xb88955)
+      world.addChild(pot); return
+    }
     const base=h.kind==='hut'?4:0
     for(let row=0;row<3;row++) for(let col=0;col<3;col++) {
       const tile=sprite(sheet,h.x+col*size,h.y+row*size,base+col,4+row,scale,false)
@@ -103,14 +120,25 @@ export function buildVillage({world, sprite, sheet, dungeon, collision, depthGro
   })
   depthGroup(VILLAGE.neighbor.y+4, () => sprite(dungeon,VILLAGE.neighbor.x-8,VILLAGE.neighbor.y-15,2,8,1,false))
   depthGroup(VILLAGE.sign.y, () => sprite(sheet,VILLAGE.sign.x-8,VILLAGE.sign.y-17,11,6,1,false))
+  if (scene.arthouse?.phase === 'intro') {
+    const mushroom=new Graphics().rect(1083,282,14,20).fill(0xf0e2ce).ellipse(1090,282,17,10).fill(0xb73d52)
+      .circle(1082,279,3).circle(1095,277,3).fill(0xffe8d5)
+      .rect(1086,288,2,2).rect(1092,288,2,2).rect(1088,293,5,2).fill(0x332a30)
+    mushroom.zIndex=304; world.addChild(mushroom)
+  }
   // Trees and gardens are placed away from main routes and doorsteps.
-  for(const [x,y] of VILLAGE_MUSHROOMS)
+  for(const [x,y] of scene.arthouse ? [] : VILLAGE_MUSHROOMS)
     depthGroup(y+16, () => sprite(sheet,x,y,5,2,1,false))
   for(const tree of VILLAGE_TREES) {
     const {x,y,scale,tint,flip,pattern} = tree
     const left=Math.round(x-8*scale), top=Math.round(y-32*scale)
     const sh=new Graphics().ellipse(x+2,y-3,12*scale,4*scale).fill({color:0x3b6142,alpha:.25}); world.addChild(sh)
     depthGroup(y-2*scale, () => {
+    if (scene.arthouse?.day >= 2) {
+      world.addChild(new Graphics().rect(x-4*scale,y-19*scale,8*scale,17*scale).fill(0xe8d8c2)
+        .ellipse(x,y-19*scale,12*scale,8*scale).fill(0xb94958)
+        .circle(x-5*scale,y-21*scale,2*scale).circle(x+4*scale,y-23*scale,2*scale).fill(0xf2e5c8)); return
+    }
     for (const [row, offset] of [[0,0],[1,16]]) {
       const tile=sprite(sheet,left,top+offset*scale,4,row,scale,false)
       tile.tint=tint
@@ -124,7 +152,7 @@ export function buildVillage({world, sprite, sheet, dungeon, collision, depthGro
     world.addChild(leaves)
     })
   }
-  for (const rect of VILLAGE_SOLIDS) collision.addRect(rect)
+  for (const [i,rect] of VILLAGE_SOLIDS.entries()) if (!(scene.arthouse && i >= 1 && i <= VILLAGE_MUSHROOMS.length)) collision.addRect(rect)
 }
 
 export function addVillageSunlight(world) {

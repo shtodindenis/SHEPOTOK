@@ -9,6 +9,7 @@ import { buildScene } from './scenes.js'
 import { MANSION_WIDTH, MANSION_HEIGHT, MANSION_WALLS, MANSION_FURNITURE, MANSION_DETAIL_COLLISIONS } from './mansionLayout.js'
 import { buildMansion, addMansionLighting } from './mansion.js'
 import { FOREST_WIDTH, FOREST_HEIGHT, stashAt } from './forestMap.js'
+import { DETENTION_WIDTH, DETENTION_HEIGHT, buildDetention } from './detention.js'
 
 const VIEW_WIDTH = 320, VIEW_HEIGHT = 192
 
@@ -77,23 +78,25 @@ export async function createWorld(host, onTick) {
     if (scene.location === 'hut') return { minX:16, maxX:304, minY:27, maxY:183 }
     if (scene.location === 'home') return { minX:25, maxX:487, minY:42, maxY:294 }
     if (scene.location === 'mansion') return { minX:25, maxX:mapWidth-25, minY:35, maxY:mapHeight-25 }
+    if (scene.location === 'detention') return { minX:25, maxX:DETENTION_WIDTH-25, minY:30, maxY:DETENTION_HEIGHT-22 }
     return { minX: outside ? 10 : 25, maxX: outside ? mapWidth - 10 : 295, minY: scene.location === 'forest' ? 35 : outside ? 87 : 58, maxY: outside ? mapHeight - 14 : 169 }
   }
   function updateCamera(player) {
     if (scene.location === 'society' && scene.questState === 'chairs') { world.position.set(-448,-32); return }
-    const scroll = scene.location === 'society_village' || (scene.location === 'society') || scene.location === 'river' || scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
+    const scroll = scene.location === 'detention' || scene.location === 'society_village' || (scene.location === 'society') || scene.location === 'river' || scene.location === 'forest' || scene.location === 'mansion' || scene.location === 'village' || scene.location === 'home' || scene.location === 'hut'
     const x = scroll ? Math.max(0, Math.min(mapWidth - VIEW_WIDTH, player.x - VIEW_WIDTH / 2)) : 0
     const y = scroll ? Math.max(0, Math.min(mapHeight - VIEW_HEIGHT, player.y - VIEW_HEIGHT / 2)) : 0
     world.position.set(-Math.round(x), -Math.round(y))
   }
   function draw(newScene, player) {
     scene = newScene
-    mapWidth = scene.location === 'society_village' ? SETTLEMENT_WIDTH : scene.location === 'society' ? SOCIETY_WIDTH : scene.location === 'river' ? RIVER_WIDTH : scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
-    mapHeight = scene.location === 'society_village' ? SETTLEMENT_HEIGHT : scene.location === 'society' ? SOCIETY_HEIGHT : scene.location === 'river' ? RIVER_HEIGHT : scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
+    mapWidth = scene.location === 'detention' ? DETENTION_WIDTH : scene.location === 'society_village' ? SETTLEMENT_WIDTH : scene.location === 'society' ? SOCIETY_WIDTH : scene.location === 'river' ? RIVER_WIDTH : scene.location === 'hut' ? HUT_WIDTH : scene.location === 'home' ? HOME_WIDTH : scene.location === 'forest' ? FOREST_WIDTH : scene.location === 'mansion' ? MANSION_WIDTH : scene.location === 'village' ? VILLAGE_WIDTH : VIEW_WIDTH
+    mapHeight = scene.location === 'detention' ? DETENTION_HEIGHT : scene.location === 'society_village' ? SETTLEMENT_HEIGHT : scene.location === 'society' ? SOCIETY_HEIGHT : scene.location === 'river' ? RIVER_HEIGHT : scene.location === 'hut' ? HUT_HEIGHT : scene.location === 'home' ? HOME_HEIGHT : scene.location === 'forest' ? FOREST_HEIGHT : scene.location === 'mansion' ? MANSION_HEIGHT : scene.location === 'village' ? VILLAGE_HEIGHT : VIEW_HEIGHT
     collision = createCollision(mapWidth, mapHeight)
     runningTrees = []
     for (const child of world.removeChildren()) child.destroy({ children: true })
-    if (scene.location === 'society_village') buildSettlement({world,sprite,sheet,collision,depthGroup})
+    if (scene.location === 'detention') buildDetention({world,collision,sprite,dungeon,scene})
+    else if (scene.location === 'society_village') buildSettlement({world,sprite,sheet,collision,depthGroup})
     else if (scene.location === 'society') buildSocietyHouse({world,sprite,interior,furniture,dungeon,collision,depthGroup,scene})
     else if (scene.location === 'river') buildRiver({world,sprite,sheet,dungeon,collision,depthGroup,scene,riverBoat,fishingRod})
     else if (scene.location === 'village') buildVillage({world, sprite, sheet, dungeon, collision, depthGroup, bike, scene})
@@ -104,7 +107,10 @@ export async function createWorld(host, onTick) {
       const hutCharacter = (x,y,witch) => character(x*HUT_SCALE,y*HUT_SCALE,witch)
       buildHut({ world:room, sprite:hutSprite, interior, furniture, dungeon, sheet, caves, collision:hutCollision, scene, character:hutCharacter })
     }
-    else if (scene.location === 'mansion') buildMansion({world,sprite,furniture,interior,mansionDecor})
+    else if (scene.location === 'mansion') {
+      buildMansion({world,sprite,furniture,interior,mansionDecor})
+      if (!scene.mansionRodTaken) { const rod = new Sprite(fishingRod); rod.x=103; rod.y=309; rod.width=24; rod.height=24; rod.zIndex=334; world.addChild(rod) }
+    }
     else if (scene.location === 'home') buildHome({ world, sprite, interior, furniture, dungeon, collision, scene, depthGroup })
     else buildScene({ world, collision, sprite, character, campTent, depthGroup, scene, sheet, dungeon, furniture, mapWidth, mapHeight })
     if (scene.location === 'mansion') {
@@ -140,6 +146,11 @@ export async function createWorld(host, onTick) {
     for (const [id, sprite] of dynamicItems) if (!ids.has(id)) { dynamicLayer.removeChild(sprite); sprite.destroy(); dynamicItems.delete(id) }
     for (const item of items) {
       let image = dynamicItems.get(item.id)
+      if (item.kind === 'guard-zone') {
+        if (!image) { image=new Graphics(); dynamicLayer.addChild(image); dynamicItems.set(item.id,image) }
+        image.clear().circle(0,0,22).fill({color:item.alarm ? 0xe75950 : 0xe9d58c,alpha:.16}).circle(0,0,22).stroke({width:1,color:item.alarm ? 0xec7b6a : 0xe9d58c,alpha:.35})
+        image.x=Math.round(item.x); image.y=Math.round(item.y); image.zIndex=1; continue
+      }
       if (item.kind === 'bobber') {
         if (!image) { image=new Graphics();dynamicLayer.addChild(image);dynamicItems.set(item.id,image) }
         image.clear().moveTo(item.fromX-item.x,item.fromY-item.y-8).lineTo(0,0).stroke({width:1,color:0xd8d4ad,alpha:.7})
@@ -152,8 +163,8 @@ export async function createWorld(host, onTick) {
       }
       if (item.kind?.startsWith('dropped-')) {
         if (!image) {
-          image=item.kind === 'dropped-rod' ? new Sprite(fishingRod) : new Graphics()
-          if (item.kind === 'dropped-rod') { image.anchor.set(.5); image.width=20; image.height=20 }
+          image=['dropped-rod','dropped-mansionRod'].includes(item.kind) ? new Sprite(fishingRod) : new Graphics()
+          if (['dropped-rod','dropped-mansionRod'].includes(item.kind)) { image.anchor.set(.5); image.width=20; image.height=20 }
           else if (item.kind === 'dropped-shovel') image.rect(-1,-10,3,12).fill(0xa97949).rect(-4,1,9,5).fill(0xa9afa3)
           else if (item.kind === 'dropped-photo') image.rect(-7,-5,14,10).fill(0xe8d7aa).rect(-4,-3,8,5).fill(0x829075)
           else image.rect(-6,-7,12,13).fill(0x789653).rect(-4,-9,8,4).fill(0xc7b48b)

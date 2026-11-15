@@ -2,6 +2,12 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { reconcileInventory } from '../src/game/inventory.js'
 
+test('river and mansion rods keep independent inventory slots', () => {
+  const slots=reconcileInventory(['rod',null,null,null,null,null],['rod','mansionRod'])
+  assert.deepEqual(slots.slice(0,2),['rod','mansionRod'])
+  assert.deepEqual(reconcileInventory(slots,['mansionRod']).slice(0,2),[null,'mansionRod'])
+})
+
 test('items enter the first free slot and remaining items keep their positions', () => {
   let slots=reconcileInventory([],['photo'])
   assert.deepEqual(slots,['photo',null,null,null,null,null])

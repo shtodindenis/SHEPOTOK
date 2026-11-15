@@ -14,6 +14,12 @@ export function buildHome({ world, sprite, interior, furniture, dungeon, collisi
   g.rect(0, 0, 512, 320).fill(0x292d35)
   g.rect(16, 32, 480, 272).fill(0x936a4c)
   world.addChild(g)
+  if (!scene.collection?.basket) {
+    const basket = new Graphics().rect(176,117,18,12).fill(0x7f5538).rect(178,119,14,8).fill(0xc69457)
+      .moveTo(180,118).lineTo(181,113).lineTo(189,113).lineTo(190,118).stroke({width:2,color:0x9d7048})
+      .moveTo(179,122).lineTo(191,122).moveTo(182,119).lineTo(182,126).moveTo(188,119).lineTo(188,126).stroke({width:1,color:0x815b3c})
+    basket.zIndex=128; world.addChild(basket)
+  }
   for (let y = 32; y < 304; y += 16) for (let x = 16; x < 496; x += 16) {
     const tile = sprite(furniture, x, y, 8, 2, 1, false)
     if (x >= 304 && y >= 160) tile.tint = 0xc2c8c1

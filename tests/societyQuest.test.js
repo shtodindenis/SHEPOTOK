@@ -9,7 +9,7 @@ test('forest paths stay connected at bends and the cache branch', () => {
   const tree=forestTrees[0]; assert.equal(behindTree({x:tree.x+8,y:tree.y+30}),true)
 })
 test('tail reaches home after investigating the stash, and carrying retries skip the dig', () => {
-  for (const mode of ['buried','empty','carrying']) {
+  for (const mode of ['buried','empty','carrying','mushrooms']) {
     const tail=createTail(mode); let result
     for(let i=0;i<4000 && !result;i++) result=updateTail(tail,50,{x:tail.x+90,y:tail.y},false)
     assert.equal(result,'success'); assert.equal(tail.dug,true)

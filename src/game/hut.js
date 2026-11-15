@@ -50,14 +50,15 @@ export function buildHut({ world, sprite, interior, furniture, dungeon, sheet, c
   for(const [x,y,c] of [[292,44,0x648878],[302,43,0x8d526a],[314,44,0x68818d],[427,63,0x659685],[439,62,0x98586f],[460,63,0x9b8755]]) {
     props.rect(x+2,y-3,3,4).fill(0xb69a71).rect(x+1,y,5,8).fill(0xb5aa8c).rect(x+2,y+3,3,4).fill(c)
   }
-  if (!scene.note) props.rect(448,66,10,7).fill(0xd5c4a0).rect(450,68,6,3).fill(0x6e785f)
+  if (!scene.note && !scene.photoConfiscated) props.rect(448,66,10,7).fill(0xd5c4a0).rect(450,68,6,3).fill(0x6e785f)
   // Skulls and bones, with the downloaded Kenney dungeon bones nearby.
   for(const [x,y] of [[342,235],[412,229],[286,72]]) {
     props.rect(x,y,12,9).fill(0xc6b79a).rect(x+2,y-3,8,3).fill(0xd8c9a6).rect(x+2,y+3,3,3).fill(0x30282b).rect(x+7,y+3,3,3).fill(0x30282b).rect(x+3,y+9,6,2).fill(0x9f8a74)
   }
   props.zIndex=250; world.addChild(props)
   const bones=sprite(caves,397,252,2,2,1.3,false); bones.zIndex=253
-  character(380,91,true)
+  if (!scene.witchMurder) character(380,91,true)
+  else { const body=new Graphics().ellipse(380,95,14,4).fill(0x713537).rect(368,88,18,6).fill(0x625865); body.zIndex=95; world.addChild(body) }
   const door=new Graphics().rect(102,284,36,20).fill(0x382a27).rect(105,287,30,17).fill(0x805a40).rect(119,288,2,15).fill(0x4a352e).rect(125,295,2,2).fill(0xd2aa6e)
   door.zIndex=304; world.addChild(door)
   const candles=new Graphics()
